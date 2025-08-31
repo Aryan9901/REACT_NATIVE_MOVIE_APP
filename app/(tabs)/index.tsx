@@ -26,7 +26,7 @@ export default function Index() {
 				className="flex-1 px-5"
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={{
-					minHeight: "1000%",
+					minHeight: "100%",
 					paddingBottom: 10,
 				}}
 			>
