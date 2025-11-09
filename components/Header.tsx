@@ -39,9 +39,9 @@ function Header({ page }: HeaderProps) {
 
   return (
     <SafeAreaView edges={["top"]} className="w-full bg-white shadow-md">
-      <View className="flex-row items-center justify-between gap-4 py-2 px-3">
+      <View className="flex-row items-center justify-between gap-2 px-3">
         {/* Logo or Vendor Info */}
-        <View className="flex-row items-center gap-3">
+        <View className="flex-row items-center gap-2">
           {isStorePage && vendor?.id ? (
             <TouchableOpacity
               onPress={goToVendorProfile}
@@ -78,7 +78,7 @@ function Header({ page }: HeaderProps) {
             >
               <Image
                 source={require("@/assets/images/logo.webp")}
-                className="w-32 h-8"
+                className="max-w-32 h-20"
                 resizeMode="contain"
               />
             </TouchableOpacity>
@@ -86,7 +86,7 @@ function Header({ page }: HeaderProps) {
         </View>
 
         {/* Right-side Icons */}
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-3">
           <TouchableOpacity
             onPress={() => handleNavigate("/cart")}
             className="relative"
@@ -101,10 +101,10 @@ function Header({ page }: HeaderProps) {
             )}
           </TouchableOpacity>
 
-          <View className="flex-row items-center gap-1">
+          <View className="flex-row items-center gap-2">
             <TouchableOpacity
               onPress={() => handleNavigate("/profile")}
-              className="bg-gray-300 rounded-full p-2"
+              className="bg-gray-300 rounded-full size-10 flex items-center justify-center"
             >
               <FontAwesome5 name="user" size={20} color="#000" />
             </TouchableOpacity>

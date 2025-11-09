@@ -1,10 +1,10 @@
 import Entypo from "@expo/vector-icons/Entypo";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { Tabs } from "expo-router";
 import { Image, Text, View } from "react-native";
 
 import Header from "@/components/Header";
-import { icons } from "@/constants/icons";
 
 function TabIcon({ focused, icon, title, isIconComponent }: any) {
   if (focused) {
@@ -54,13 +54,25 @@ export default function TabsLayout() {
         },
         header: () => <Header />,
       }}
+      backBehavior="history"
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "index",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon={icons.home} title="Home" />
+            <TabIcon
+              focused={focused}
+              icon={
+                <FontAwesome5
+                  name="home"
+                  size={20}
+                  color={focused ? "#f77b05" : "#333"}
+                />
+              }
+              isIconComponent={true}
+              title="Home"
+            />
           ),
         }}
       />
@@ -112,7 +124,18 @@ export default function TabsLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon={icons.person} title="Profile" />
+            <TabIcon
+              focused={focused}
+              icon={
+                <FontAwesome
+                  name="user"
+                  size={20}
+                  color={focused ? "#f77b05" : "#333"}
+                />
+              }
+              isIconComponent={true}
+              title="Profile"
+            />
           ),
         }}
       />
