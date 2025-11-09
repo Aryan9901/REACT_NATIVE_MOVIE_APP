@@ -63,7 +63,7 @@ export default function Contact() {
 
       Alert.alert("Success", "Message sent successfully! ✅");
       setFormData({ ...formData, message: "" });
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof EmailJSResponseStatus) {
         console.log("EmailJS Request Failed...", err);
         Alert.alert("Error", `Failed to send message: ${err.text}`);

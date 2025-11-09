@@ -28,7 +28,7 @@ export default function Terms() {
         </Text>
 
         {/* Content */}
-        <View className="space-y-6">
+        <View className="space-y-6 pb-4">
           {/* Welcome Section */}
           <View>
             <Text className="text-lg font-bold text-gray-800 mb-3">

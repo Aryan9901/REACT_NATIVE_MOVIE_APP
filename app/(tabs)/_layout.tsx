@@ -27,9 +27,14 @@ function TabIcon({ focused, icon, title, isIconComponent }: any) {
       {isIconComponent ? (
         icon
       ) : (
-        <Image source={icon} tintColor="#333" className="size-6" />
+        <Image source={icon} tintColor="#a9a9b9" className="size-6" />
       )}
-      <Text className="text-[#333] text-base w-fit font-semibold">{title}</Text>
+      <Text
+        style={{ color: "#a9a9b9" }}
+        className="text-[#a9a9b9] text-base w-fit font-semibold"
+      >
+        {title}
+      </Text>
     </View>
   );
 }
@@ -67,7 +72,7 @@ export default function TabsLayout() {
                 <FontAwesome5
                   name="home"
                   size={20}
-                  color={focused ? "#f77b05" : "#333"}
+                  color={focused ? "#f77b05" : "#a9a9b9"}
                 />
               }
               isIconComponent={true}
@@ -88,7 +93,7 @@ export default function TabsLayout() {
                 <FontAwesome5
                   name="history"
                   size={20}
-                  color={focused ? "#f77b05" : "#333"}
+                  color={focused ? "#f77b05" : "#a9a9b9"}
                 />
               }
               title="Orders"
@@ -109,7 +114,7 @@ export default function TabsLayout() {
                 <Entypo
                   name="shopping-cart"
                   size={20}
-                  color={focused ? "#f77b05" : "#333"}
+                  color={focused ? "#f77b05" : "#a9a9b9"}
                 />
               }
               isIconComponent={true}
@@ -130,7 +135,7 @@ export default function TabsLayout() {
                 <FontAwesome
                   name="user"
                   size={20}
-                  color={focused ? "#f77b05" : "#333"}
+                  color={focused ? "#f77b05" : "#a9a9b9"}
                 />
               }
               isIconComponent={true}

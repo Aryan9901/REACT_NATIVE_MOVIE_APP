@@ -92,7 +92,15 @@ const Profile = () => {
       iconType: "Ionicons",
       title: "About Us",
       subtitle: "Know more about BigLocal",
-      route: "/about",
+      action: async () => {
+        const url = process.env.EXPO_PUBLIC_ABOUT_URL;
+        if (url) {
+          const supported = await Linking.canOpenURL(url);
+          if (supported) {
+            await Linking.openURL(url);
+          }
+        }
+      },
       showChevron: true,
     },
     {
@@ -118,6 +126,13 @@ const Profile = () => {
       iconType: "Ionicons",
       title: "Privacy Policy",
       route: "/privacy",
+      showChevron: true,
+    },
+    {
+      icon: "cube-outline",
+      iconType: "Ionicons",
+      title: "Shipping Policy",
+      route: "/shipping",
       showChevron: true,
     },
     {
@@ -232,13 +247,18 @@ const Profile = () => {
   return (
     <ScrollView className="flex-1 bg-gray-50">
       <View className="bg-white px-4 py-6 mb-2">
-        <View className="items-center">
-          <View className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 items-center justify-center mb-3">
-            <FontAwesome5 name="user" size={40} color="#fff" />
+        <View className="items-center gap-4">
+          <View
+            className="w-20 mb-3 h-20 rounded-full bg-slate-400 items-center justify-center shadow-md"
+            style={{ backgroundColor: "#a9a9b9", marginRight: 14 }}
+          >
+            <FontAwesome5 name="user" size={32} color="#000" />
           </View>
-          <Text className="text-xl font-bold text-gray-900">{user.name}</Text>
-          <Text className="text-sm text-gray-500 mt-1">{user.email}</Text>
-          <Text className="text-sm text-gray-500">{user.phone}</Text>
+          <View className="flex-1 items-center">
+            <Text className="text-xl font-bold text-gray-900">{user.name}</Text>
+            <Text className="text-sm text-gray-500 mt-1">{user.email}</Text>
+            <Text className="text-sm text-gray-500">{user.phone}</Text>
+          </View>
         </View>
       </View>
 
@@ -279,10 +299,10 @@ const Profile = () => {
         <View className="bg-white">
           <TouchableOpacity
             onPress={async () => {
-              const url = "https://seller.biglocal.in";
-              const supported = await Linking.canOpenURL(url);
+              const url = process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID;
+              const supported = await Linking.canOpenURL(url as any);
               if (supported) {
-                await Linking.openURL(url);
+                await Linking.openURL(url as any);
               }
             }}
             className="flex-row items-center px-4 py-4 bg-white"
