@@ -1,3 +1,5 @@
+import RefreshableScrollView from "@/components/RefreshableScrollView";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Feather,
   FontAwesome5,
@@ -5,14 +7,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import {
-  Alert,
-  Linking,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, Linking, Text, TouchableOpacity, View } from "react-native";
 
 // Mock data - replace with real data later
 const getMockUser = () => ({
@@ -35,8 +30,20 @@ interface MenuItem {
 
 const Profile = () => {
   const router = useRouter();
-  const user = getMockUser();
-  const isGuestMode = getMockIsGuest();
+  const { isGuestMode, user, refreshUser } = useAuth();
+
+  console.log("User object:", JSON.stringify(user, null, 2));
+
+  const handleRefresh = async () => {
+    try {
+      // Refresh user data if available
+      if (refreshUser) {
+        await refreshUser();
+      }
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -176,7 +183,9 @@ const Profile = () => {
           router.push(item.route as any);
         }
       }}
-      className={`flex-row items-center px-4 py-4 bg-white ${!isLast ? "border-b border-gray-100" : ""}`}
+      className={`flex-row items-center px-4 py-4 bg-white ${
+        !isLast ? "border-b border-gray-100" : ""
+      }`}
       activeOpacity={0.7}
     >
       <View className="w-10 items-center">
@@ -198,7 +207,10 @@ const Profile = () => {
 
   if (isGuestMode) {
     return (
-      <ScrollView className="flex-1 bg-gray-50">
+      <RefreshableScrollView
+        className="flex-1 bg-gray-50"
+        onRefresh={handleRefresh}
+      >
         <View className="bg-white px-4 py-6 mb-2">
           <View className="items-center">
             <View className="w-20 h-20 rounded-full bg-gray-200 items-center justify-center mb-3">
@@ -240,12 +252,15 @@ const Profile = () => {
             )}
           </View>
         </View>
-      </ScrollView>
+      </RefreshableScrollView>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <RefreshableScrollView
+      className="flex-1 bg-gray-50"
+      onRefresh={handleRefresh}
+    >
       <View className="bg-white px-4 py-6 mb-2">
         <View className="items-center gap-4">
           <View
@@ -255,9 +270,18 @@ const Profile = () => {
             <FontAwesome5 name="user" size={32} color="#000" />
           </View>
           <View className="flex-1 items-center">
-            <Text className="text-xl font-bold text-gray-900">{user.name}</Text>
-            <Text className="text-sm text-gray-500 mt-1">{user.email}</Text>
-            <Text className="text-sm text-gray-500">{user.phone}</Text>
+            <Text className="text-xl font-bold text-gray-900">
+              {user?.name || "User"}
+            </Text>
+            <Text className="text-base mt-1 font-medium text-gray-900">
+              {user?.mobileNo || "User"}
+            </Text>
+            {user?.emailId ? (
+              <Text className="text-sm text-gray-500">{user.emailId}</Text>
+            ) : null}
+            {user?.mobileNo && !user?.name ? (
+              <Text className="text-sm mt-2 text-gray-500">Mobile User</Text>
+            ) : null}
           </View>
         </View>
       </View>
@@ -342,7 +366,7 @@ const Profile = () => {
       <View className="items-center pb-8">
         <Text className="text-xs text-gray-400">Version 1.0.0</Text>
       </View>
-    </ScrollView>
+    </RefreshableScrollView>
   );
 };
 

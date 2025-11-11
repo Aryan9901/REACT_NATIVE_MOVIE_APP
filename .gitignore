@@ -38,3 +38,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+EXAMPLE_IMPLEMENTATIONS.md
+PULL_TO_REFRESH_GUIDE.md
+REFRESH_SUMMARY.md

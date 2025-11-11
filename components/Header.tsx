@@ -1,5 +1,7 @@
-import { Entypo, Feather, FontAwesome5 } from "@expo/vector-icons";
+import { useAuth } from "@/contexts/AuthContext";
+import { Entypo, Feather } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
+import { useEffect } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -20,11 +22,12 @@ interface HeaderProps {
 function Header({ page }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { refreshUser, isAuthenticated, setShowAuthModal } = useAuth();
 
   const vendor = getMockVendor();
   const totalItems = getMockCartItems();
   const isCartEmpty = totalItems === 0;
-  const isGuestMode = getMockIsGuest();
+  const isGuestMode = !isAuthenticated;
 
   const isStorePage = pathname === "/store";
 
@@ -37,9 +40,15 @@ function Header({ page }: HeaderProps) {
     router.push("/vendor/profile" as any);
   };
 
+  useEffect(() => {
+    console.log("hii");
+
+    refreshUser();
+  }, []);
+
   return (
     <SafeAreaView edges={["top"]} className="w-full bg-white shadow-md">
-      <View className="flex-row items-center justify-between gap-2 px-3">
+      <View className="flex-row py-0 items-center justify-between gap-2 px-3">
         {/* Logo or Vendor Info */}
         <View className="flex-row items-center gap-2">
           {isStorePage && vendor?.id ? (
@@ -74,10 +83,10 @@ function Header({ page }: HeaderProps) {
           ) : (
             <TouchableOpacity
               onPress={() => handleNavigate("/")}
-              className="flex-row items-center gap-2"
+              className="flex-row py-0 items-center gap-2"
             >
               <Image
-                source={require("@/assets/images/logo.webp")}
+                source={require("@/assets/images/logo.png")}
                 className="max-w-32 h-20"
                 resizeMode="contain"
               />
@@ -86,43 +95,17 @@ function Header({ page }: HeaderProps) {
         </View>
 
         {/* Right-side Icons */}
-        <View className="flex-row items-center gap-3">
-          <TouchableOpacity
-            onPress={() => handleNavigate("/cart")}
-            className="relative"
-          >
-            <Entypo name="shopping-cart" size={24} color="#64748b" />
-            {!isCartEmpty && (
-              <View className="absolute -top-2 -right-2 bg-[#F77C06] rounded-full w-5 h-5 items-center justify-center border-2 border-white">
-                <Text className="text-white text-xs font-bold">
-                  {totalItems}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-2">
+          {isGuestMode && (
             <TouchableOpacity
-              onPress={() => handleNavigate("/profile")}
-              className="bg-gray-300 rounded-full size-10 flex items-center justify-center"
+              onPress={() => setShowAuthModal(true)}
+              className="px-3 py-2 bg-orange-600 rounded-md"
             >
-              <FontAwesome5 name="user" size={20} color="#000" />
+              <Text className="text-white text-base font-semibold">
+                Sign In
+              </Text>
             </TouchableOpacity>
-
-            {isGuestMode && (
-              <TouchableOpacity
-                onPress={() => {
-                  // Open login modal - for now just navigate
-                  console.log("Open login modal");
-                }}
-                className="px-2 py-1 bg-orange-600 rounded-md"
-              >
-                <Text className="text-white text-sm font-semibold">
-                  Sign In
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          )}
         </View>
       </View>
     </SafeAreaView>

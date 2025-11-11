@@ -1,4 +1,6 @@
 import Header from "@/components/Header";
+import { useAuth } from "@/contexts/AuthContext";
+import * as AuthService from "@/services/auth";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -12,16 +14,9 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
-// Mock user data - replace with real context later
-const getMockUser = () => ({
-  name: "Valued Customer",
-  emailId: "customer@example.com",
-  mobileNo: "+91 98765 43210",
-});
-
 const EditProfile = () => {
   const router = useRouter();
-  const user = getMockUser();
+  const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -35,7 +30,7 @@ const EditProfile = () => {
         emailId: user.emailId || "",
       });
     }
-  }, []);
+  }, [user]);
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -55,29 +50,30 @@ const EditProfile = () => {
       return;
     }
 
+    if (!user?.mobileNo) {
+      Alert.alert("Error", "User mobile number not found");
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // TODO: Replace with actual API call
-      // const payload = {
-      //   name: formData.name,
-      //   emailId: formData.emailId,
-      //   mobileNo: user.mobileNo,
-      // };
-      // await updateUserProfile(payload);
+      await AuthService.updateUserProfile(
+        formData.name,
+        formData.emailId,
+        user.mobileNo
+      );
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Refresh user data in context
+      await refreshUser();
 
-      Alert.alert("Success", "Profile updated successfully", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
-    } catch (error) {
+      router.back();
+    } catch (error: any) {
       console.error(error);
-      Alert.alert("Error", "Failed to update profile");
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to update profile"
+      );
     } finally {
       setLoading(false);
     }
@@ -98,7 +94,9 @@ const EditProfile = () => {
             <View className="w-24 h-24 rounded-full bg-slate-400 items-center justify-center mb-3">
               <Ionicons name="person" size={48} color="#000" />
             </View>
-            <Text className="text-xl font-bold text-gray-900">{user.name}</Text>
+            <Text className="text-xl font-bold text-gray-900">
+              {user?.name || "User"}
+            </Text>
           </View>
         </View>
 
@@ -158,7 +156,7 @@ const EditProfile = () => {
             <View className="flex-row items-center bg-gray-100 border border-gray-200 rounded-lg px-3">
               <Ionicons name="call-outline" size={20} color="#64748b" />
               <TextInput
-                value={user.mobileNo}
+                value={user?.mobileNo || ""}
                 editable={false}
                 className="flex-1 ml-3 text-base text-gray-500"
               />
