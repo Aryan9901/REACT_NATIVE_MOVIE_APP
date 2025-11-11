@@ -65,6 +65,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "index",
+          headerShown: false,
+
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
