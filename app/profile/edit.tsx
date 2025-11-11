@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 // Mock user data - replace with real context later
 const getMockUser = () => ({
@@ -86,7 +86,13 @@ const EditProfile = () => {
   return (
     <View className="flex-1 bg-gray-50">
       <Header />
-      <ScrollView>
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        className="bg-gray-50 px-4 py-6"
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={40}
+      >
         <View className="bg-white px-4 py-6 mb-2">
           <View className="items-center mb-6">
             <View className="w-24 h-24 rounded-full bg-slate-400 items-center justify-center mb-3">
@@ -195,7 +201,7 @@ const EditProfile = () => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };
