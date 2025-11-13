@@ -1,5 +1,5 @@
 import RefreshableScrollView from "@/components/RefreshableScrollView";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/stores";
 import {
   Feather,
   FontAwesome5,
@@ -30,7 +30,7 @@ interface MenuItem {
 
 const Profile = () => {
   const router = useRouter();
-  const { isGuestMode, user, refreshUser, logout } = useAuth();
+  const { isGuestMode, user, refreshUser, logout } = useAuthStore();
 
   const handleRefresh = async () => {
     try {

@@ -1,6 +1,6 @@
 import Header from "@/components/Header";
-import { useAuth } from "@/contexts/AuthContext";
 import * as AuthService from "@/services/auth";
+import { useAuthStore } from "@/stores";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -16,7 +16,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 const EditProfile = () => {
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",

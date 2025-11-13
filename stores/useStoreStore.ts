@@ -1,6 +1,6 @@
 import { STORAGE_KEYS } from "@/lib/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { create } from "zustand";
 
 interface AttributeValueProps {
   name: string;
@@ -42,37 +42,33 @@ interface DeliveryLocation {
   state?: string;
 }
 
-interface StoreContextType {
+interface StoreState {
   selectedVendor: Vendor | null;
-  setSelectedVendor: (vendor: Vendor | null) => void;
   deliveryLocation: DeliveryLocation | null;
-  setDeliveryLocation: (location: DeliveryLocation | null) => void;
   cart: CartItem[];
+  isLoading: boolean;
+  cartTotal: number;
+  cartItemCount: number;
+
+  // Actions
+  setSelectedVendor: (vendor: Vendor | null) => void;
+  setDeliveryLocation: (location: DeliveryLocation | null) => void;
   addToCart: (item: CartItem) => void;
   removeFromCart: (productId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  cartTotal: number;
-  cartItemCount: number;
-  isLoading: boolean;
+  loadStoredData: () => Promise<void>;
 }
 
-const StoreContext = createContext<StoreContextType | undefined>(undefined);
+export const useStoreStore = create<StoreState>((set, get) => ({
+  selectedVendor: null,
+  deliveryLocation: null,
+  cart: [],
+  isLoading: true,
+  cartTotal: 0,
+  cartItemCount: 0,
 
-export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [selectedVendor, setSelectedVendorState] = useState<Vendor | null>(
-    null
-  );
-  const [deliveryLocation, setDeliveryLocationState] =
-    useState<DeliveryLocation | null>(null);
-  const [cart, setCartState] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadStoredData();
-  }, []);
-
-  const loadStoredData = async () => {
+  loadStoredData: async () => {
     try {
       const [vendorData, locationData, cartData] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.SELECTED_VENDOR),
@@ -80,18 +76,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         AsyncStorage.getItem(STORAGE_KEYS.SAVED_CART),
       ]);
 
-      if (vendorData) setSelectedVendorState(JSON.parse(vendorData));
-      if (locationData) setDeliveryLocationState(JSON.parse(locationData));
-      if (cartData) setCartState(JSON.parse(cartData));
+      const updates: any = { isLoading: false };
+
+      if (vendorData) updates.selectedVendor = JSON.parse(vendorData);
+      if (locationData) updates.deliveryLocation = JSON.parse(locationData);
+      if (cartData) {
+        const parsedCart = JSON.parse(cartData);
+        updates.cart = parsedCart;
+        updates.cartTotal = parsedCart.reduce(
+          (sum: number, item: CartItem) => sum + item.price * item.quantity,
+          0
+        );
+        updates.cartItemCount = parsedCart.reduce(
+          (sum: number, item: CartItem) => sum + item.quantity,
+          0
+        );
+      }
+
+      set(updates);
     } catch (error) {
       console.error("Error loading store data:", error);
-    } finally {
-      setIsLoading(false);
+      set({ isLoading: false });
     }
-  };
+  },
 
-  const setSelectedVendor = async (vendor: Vendor | null) => {
+  setSelectedVendor: async (vendor) => {
     try {
+      const currentVendor = get().selectedVendor;
+
       if (vendor) {
         await AsyncStorage.setItem(
           STORAGE_KEYS.SELECTED_VENDOR,
@@ -100,18 +112,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } else {
         await AsyncStorage.removeItem(STORAGE_KEYS.SELECTED_VENDOR);
       }
-      setSelectedVendorState(vendor);
+
+      set({ selectedVendor: vendor });
 
       // Clear cart when vendor changes
-      if (vendor?.id !== selectedVendor?.id) {
-        await clearCart();
+      if (vendor?.id !== currentVendor?.id) {
+        get().clearCart();
       }
     } catch (error) {
       console.error("Error saving vendor:", error);
     }
-  };
+  },
 
-  const setDeliveryLocation = async (location: DeliveryLocation | null) => {
+  setDeliveryLocation: async (location) => {
     try {
       if (location) {
         await AsyncStorage.setItem(
@@ -121,14 +134,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } else {
         await AsyncStorage.removeItem(STORAGE_KEYS.SELECTED_LOCATION);
       }
-      setDeliveryLocationState(location);
+      set({ deliveryLocation: location });
     } catch (error) {
       console.error("Error saving location:", error);
     }
-  };
+  },
 
-  const addToCart = async (item: CartItem) => {
+  addToCart: async (item) => {
     try {
+      const { cart } = get();
       const existingIndex = cart.findIndex(
         (i) => i.productId === item.productId
       );
@@ -145,86 +159,85 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         STORAGE_KEYS.SAVED_CART,
         JSON.stringify(newCart)
       );
-      setCartState(newCart);
+
+      const cartTotal = newCart.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      const cartItemCount = newCart.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      );
+
+      set({ cart: newCart, cartTotal, cartItemCount });
     } catch (error) {
       console.error("Error adding to cart:", error);
     }
-  };
+  },
 
-  const removeFromCart = async (productId: string) => {
+  removeFromCart: async (productId) => {
     try {
+      const { cart } = get();
       const newCart = cart.filter((item) => item.productId !== productId);
+
       await AsyncStorage.setItem(
         STORAGE_KEYS.SAVED_CART,
         JSON.stringify(newCart)
       );
-      setCartState(newCart);
+
+      const cartTotal = newCart.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      const cartItemCount = newCart.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      );
+
+      set({ cart: newCart, cartTotal, cartItemCount });
     } catch (error) {
       console.error("Error removing from cart:", error);
     }
-  };
+  },
 
-  const updateCartQuantity = async (productId: string, quantity: number) => {
+  updateCartQuantity: async (productId, quantity) => {
     try {
       if (quantity <= 0) {
-        await removeFromCart(productId);
+        get().removeFromCart(productId);
         return;
       }
 
+      const { cart } = get();
       const newCart = cart.map((item) =>
         item.productId === productId ? { ...item, quantity } : item
       );
+
       await AsyncStorage.setItem(
         STORAGE_KEYS.SAVED_CART,
         JSON.stringify(newCart)
       );
-      setCartState(newCart);
+
+      const cartTotal = newCart.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      const cartItemCount = newCart.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      );
+
+      set({ cart: newCart, cartTotal, cartItemCount });
     } catch (error) {
       console.error("Error updating cart quantity:", error);
     }
-  };
+  },
 
-  const clearCart = async () => {
+  clearCart: async () => {
     try {
       await AsyncStorage.removeItem(STORAGE_KEYS.SAVED_CART);
-      setCartState([]);
+      set({ cart: [], cartTotal: 0, cartItemCount: 0 });
     } catch (error) {
       console.error("Error clearing cart:", error);
     }
-  };
-
-  const cartTotal = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  return (
-    <StoreContext.Provider
-      value={{
-        selectedVendor,
-        setSelectedVendor,
-        deliveryLocation,
-        setDeliveryLocation,
-        cart,
-        addToCart,
-        removeFromCart,
-        updateCartQuantity,
-        clearCart,
-        cartTotal,
-        cartItemCount,
-        isLoading,
-      }}
-    >
-      {children}
-    </StoreContext.Provider>
-  );
-}
-
-export function useStore() {
-  const context = useContext(StoreContext);
-  if (context === undefined) {
-    throw new Error("useStore must be used within a StoreProvider");
-  }
-  return context;
-}
+  },
+}));

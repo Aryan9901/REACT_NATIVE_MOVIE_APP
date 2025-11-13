@@ -1,7 +1,5 @@
 import AuthModal from "@/components/AuthModal";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { LocationProvider } from "@/contexts/LocationContext";
-import { StoreProvider } from "@/contexts/StoreContext";
+import StoreInitializer from "@/components/StoreInitializer";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -18,48 +16,31 @@ export default function RootLayout() {
         animationType="slide-in"
         offset={50}
       >
-        <AuthProvider>
-          <LocationProvider>
-            <StoreProvider>
-              <KeyboardProvider>
-                <StatusBar
-                  style="dark"
-                  translucent={false}
-                  backgroundColor="#030014"
-                />
-                <Stack>
-                  {/* <Stack.Screen name="index" options={{ headerShown: false }} /> */}
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="orders/[id]"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen name="terms" options={{ headerShown: false }} />
-                  <Stack.Screen
-                    name="privacy"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="shipping"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="return-policy"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="profile/edit"
-                    options={{ headerShown: false }}
-                  />
-                </Stack>
-                <AuthModal />
-              </KeyboardProvider>
-            </StoreProvider>
-          </LocationProvider>
-        </AuthProvider>
+        <KeyboardProvider>
+          <StoreInitializer />
+          <StatusBar
+            style="dark"
+            translucent={false}
+            backgroundColor="#030014"
+          />
+          <Stack>
+            {/* <Stack.Screen name="index" options={{ headerShown: false }} /> */}
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="orders/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="terms" options={{ headerShown: false }} />
+            <Stack.Screen name="privacy" options={{ headerShown: false }} />
+            <Stack.Screen name="shipping" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="return-policy"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="profile/edit"
+              options={{ headerShown: false }}
+            />
+          </Stack>
+          <AuthModal />
+        </KeyboardProvider>
       </ToastProvider>
     </SafeAreaProvider>
   );

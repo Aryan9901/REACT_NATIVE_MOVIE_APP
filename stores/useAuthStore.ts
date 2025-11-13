@@ -1,13 +1,7 @@
 import { STORAGE_KEYS } from "@/lib/constants";
 import * as AuthService from "@/services/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { create } from "zustand";
 
 interface User {
   id: string;
@@ -30,34 +24,38 @@ interface User {
   }>;
 }
 
-interface AuthContextType {
+interface AuthState {
   user: User | null;
-  isAuthenticated: boolean;
   loading: boolean;
   showAuthModal: boolean;
+  isGuestMode: boolean;
+  isAuthenticated: boolean;
+
+  // Actions
+  setUser: (user: User | null) => void;
+  setLoading: (loading: boolean) => void;
   setShowAuthModal: (show: boolean) => void;
+  setIsGuestMode: (isGuest: boolean) => void;
+  loadUser: () => Promise<void>;
   initiateLogin: (mobile: string) => Promise<any>;
   verifyOTP: (otp: string, mobile: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  isGuestMode: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  loading: true,
+  showAuthModal: false,
+  isGuestMode: true,
+  isAuthenticated: false,
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isGuestMode, setIsGuestMode] = useState(true);
+  setUser: (user) => set({ user, isAuthenticated: !!user?.id }),
+  setLoading: (loading) => set({ loading }),
+  setShowAuthModal: (showAuthModal) => set({ showAuthModal }),
+  setIsGuestMode: (isGuestMode) => set({ isGuestMode }),
 
-  const isAuthenticated = !!user?.id;
-
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
+  loadUser: async () => {
     try {
       const mobile = await AsyncStorage.getItem(STORAGE_KEYS.MOBILE);
       const sessionToken = await AsyncStorage.getItem(
@@ -65,14 +63,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       if (mobile && sessionToken) {
-        setIsGuestMode(false);
+        set({ isGuestMode: false });
         const userData = await AuthService.getUserProfile(mobile);
         if (userData?.id) {
-          setUser(userData);
+          set({ user: userData, isAuthenticated: true });
         }
       } else {
         await AsyncStorage.setItem(STORAGE_KEYS.GUEST_MODE, "true");
-        setIsGuestMode(true);
+        set({ isGuestMode: true });
       }
     } catch (error) {
       console.error("Failed to load user:", error);
@@ -81,27 +79,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         STORAGE_KEYS.SESSION_TOKEN,
       ]);
     } finally {
-      setLoading(false);
+      set({ loading: false });
     }
-  };
+  },
 
-  const initiateLogin = async (mobile: string) => {
+  initiateLogin: async (mobile: string) => {
     try {
-      console.log(mobile);
-      setLoading(true);
+      set({ loading: true });
       const data = await AuthService.sendOtp(mobile);
       return data;
     } catch (error: any) {
       console.error("Failed to send OTP:", error);
       throw new Error(error.response?.data?.message || "Failed to send OTP");
     } finally {
-      setLoading(false);
+      set({ loading: false });
     }
-  };
+  },
 
-  const verifyOTP = async (otp: string, mobile: string) => {
+  verifyOTP: async (otp: string, mobile: string) => {
     try {
-      setLoading(true);
+      set({ loading: true });
       const authData = await AuthService.verifyOtp(otp, mobile);
 
       if (!authData?.sessionToken) {
@@ -112,19 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         STORAGE_KEYS.SESSION_TOKEN,
         authData.sessionToken
       );
-
       await AsyncStorage.setItem(
         STORAGE_KEYS.REFRESH_TOKEN,
         authData.refreshToken
       );
-
-      console.log(mobile);
-
       await AsyncStorage.setItem(STORAGE_KEYS.MOBILE, mobile);
 
       let userData = await AuthService.getUserProfile(mobile);
-
-      console.log(userData);
 
       if (!userData?.id) {
         userData = await AuthService.createUser(mobile, authData.sessionToken);
@@ -134,74 +125,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to get user data");
       }
 
-      setUser(userData);
-      setShowAuthModal(false);
+      set({ user: userData, isAuthenticated: true, showAuthModal: false });
     } catch (error: any) {
       console.error("Failed to verify OTP:", error);
       throw new Error(error.response?.data?.message || "Invalid OTP");
     } finally {
-      setLoading(false);
+      set({ loading: false });
     }
-  };
+  },
 
-  const logout = async () => {
+  logout: async () => {
     try {
       const mobile = await AsyncStorage.getItem(STORAGE_KEYS.MOBILE);
-      console.log(mobile);
-
-      AuthService.logoutUser(`+91${mobile}` as any);
+      if (mobile) {
+        AuthService.logoutUser(`+91${mobile}` as any);
+      }
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.MOBILE,
         STORAGE_KEYS.SESSION_TOKEN,
         STORAGE_KEYS.REFRESH_TOKEN,
       ]);
-      setUser(null);
+      set({ user: null, isAuthenticated: false });
     } catch (error) {
       console.error("Failed to logout:", error);
     }
-  };
+  },
 
-  const refreshUser = async () => {
+  refreshUser: async () => {
     try {
       const mobile = await AsyncStorage.getItem(STORAGE_KEYS.MOBILE);
-
-      console.log(mobile);
-
       if (mobile) {
-        setLoading(true);
+        set({ loading: true });
         const userData = await AuthService.getUserProfile(mobile);
         if (userData?.id) {
-          setUser(userData);
+          set({ user: userData, isAuthenticated: true });
         }
       }
     } catch (error) {
       console.error("Failed to refresh user:", error);
       throw error;
     } finally {
-      setLoading(false);
+      set({ loading: false });
     }
-  };
-
-  const value: AuthContextType = {
-    user,
-    isAuthenticated,
-    loading,
-    showAuthModal,
-    setShowAuthModal,
-    initiateLogin,
-    verifyOTP,
-    logout,
-    refreshUser,
-    isGuestMode,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+  },
+}));

@@ -1,7 +1,6 @@
 // app/components/LocationModal.tsx
-import { useAuth } from "@/contexts/AuthContext";
-import { useLocation } from "@/contexts/LocationContext";
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
+import { useAuthStore, useLocationStore } from "@/stores";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -51,8 +50,8 @@ export default function LocationModal({
     updateAddress,
     prepareLocationData,
     formatAddress,
-  }: any = useLocation();
-  const { user } = useAuth();
+  }: any = useLocationStore();
+  const { user } = useAuthStore();
   const router = useRouter();
   const [searchFocused, setSearchFocused] = useState(false);
 

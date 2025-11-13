@@ -1,8 +1,8 @@
 import CustomDropdown from "@/components/CustomDropdown";
 import RefreshableScrollView from "@/components/RefreshableScrollView";
-import { useAuth } from "@/contexts/AuthContext";
 import { getStatusBadge, ORDER_STATUS } from "@/lib/constants";
 import * as OrderService from "@/services/order";
+import { useAuthStore } from "@/stores";
 import {
   FontAwesome5,
   Ionicons,
@@ -144,7 +144,7 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
-  const { user, isGuestMode } = useAuth();
+  const { user, isGuestMode } = useAuthStore();
   const router = useRouter();
 
   const fetchOrders = useCallback(async () => {

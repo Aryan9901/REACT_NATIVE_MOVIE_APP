@@ -5,9 +5,8 @@ import {
   getCategoryIcon,
   getFallbackIconName,
 } from "@/constants/categoryIcons";
-import { useAuth } from "@/contexts/AuthContext";
-import { useLocation } from "@/contexts/LocationContext";
 import { fetchNearbyVendors } from "@/services/vendor.service";
+import { useAuthStore, useLocationStore } from "@/stores";
 import {
   calculateDistancesForVendors,
   DistanceResult,
@@ -15,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useToast } from "react-native-toast-notifications";
 
 interface AttributeValueProps {
   name: string;
@@ -40,13 +40,17 @@ interface Vendor {
 }
 
 export default function Index() {
-  const {
-    getLiveLocation,
-    location,
-    isLocationTurnedOff,
-    loadingLocation,
-  }: any = useLocation();
-  const { user } = useAuth();
+  // Zustand stores
+  const user = useAuthStore((state) => state.user);
+  const location = useLocationStore((state) => state.location);
+  const isLocationTurnedOff = useLocationStore(
+    (state) => state.isLocationTurnedOff
+  );
+  const loadingLocation = useLocationStore((state) => state.loadingLocation);
+  const getLiveLocation = useLocationStore((state) => state.getLiveLocation);
+
+  const toast = useToast();
+
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [filteredVendors, setFilteredVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +64,7 @@ export default function Index() {
     const fetchVendors = async () => {
       if (!location || !location?.latitude || !location?.longitude) {
         try {
-          await getLiveLocation(false, null, true);
+          await getLiveLocation(false, null, true, user?.id, toast);
         } catch (error) {
           console.error("Failed to get location:", error);
           setLoading(false);
@@ -209,7 +213,9 @@ export default function Index() {
         loadingLocation={loadingLocation}
         isLocationTurnedOff={isLocationTurnedOff}
         selectedCategory={selectedCategory}
-        onEnableLocation={() => getLiveLocation(false, null, true)}
+        onEnableLocation={() =>
+          getLiveLocation(false, null, true, user?.id, toast)
+        }
         onVendorPress={handleVendorSelect}
       />
     </View>

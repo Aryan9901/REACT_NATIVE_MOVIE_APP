@@ -1,5 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
-import { useLocation } from "@/contexts/LocationContext";
+import { useAuthStore, useLocationStore } from "@/stores";
 import { Entypo } from "@expo/vector-icons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
@@ -10,14 +9,10 @@ import LocationPicker from "./LocationPicker";
 
 function HomeHeader() {
   const router = useRouter();
-  const { isAuthenticated, setShowAuthModal } = useAuth();
+  const { isAuthenticated, setShowAuthModal } = useAuthStore();
   const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const isGuestMode = !isAuthenticated;
-
-  const handleNavigate = (path: string) => {
-    router.push(path as any);
-  };
 
   return (
     <>
@@ -63,7 +58,7 @@ const LocationSelector = ({
 }: {
   setOpen: (action: boolean) => void;
 }) => {
-  const { location, loading: loadingLocation }: any = useLocation();
+  const { location, loading: loadingLocation }: any = useLocationStore();
 
   let displayAddress =
     location && location?.address

@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/stores";
 import { Entypo, Feather, FontAwesome } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { useEffect } from "react";
@@ -22,7 +22,7 @@ interface HeaderProps {
 function Header({ page }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { refreshUser, isAuthenticated, setShowAuthModal } = useAuth();
+  const { refreshUser, isAuthenticated, setShowAuthModal } = useAuthStore();
 
   const vendor = getMockVendor();
   const totalItems = getMockCartItems();

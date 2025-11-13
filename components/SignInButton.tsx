@@ -1,8 +1,8 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/stores";
 import { Pressable, Text } from "react-native";
 
 export default function SignInButton() {
-  const { setShowAuthModal } = useAuth();
+  const { setShowAuthModal } = useAuthStore();
 
   return (
     <Pressable

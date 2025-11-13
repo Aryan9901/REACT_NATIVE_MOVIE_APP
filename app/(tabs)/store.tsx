@@ -1,4 +1,4 @@
-import { useStore } from "@/contexts/StoreContext";
+import { useStoreStore } from "@/stores";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 
 const Store = () => {
-  const { selectedVendor, isLoading, cartItemCount } = useStore();
+  const { selectedVendor, isLoading, cartItemCount } = useStoreStore();
   const router = useRouter();
 
   if (isLoading) {

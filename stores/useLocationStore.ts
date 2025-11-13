@@ -1,20 +1,9 @@
-// app/contexts/LocationContext.tsx
 import { fetchNearbyAddress } from "@/services/address";
 import { formatAddress } from "@/utils/locationUtils";
 import * as Location from "expo-location";
-import React, {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useRef,
-  useState,
-} from "react";
 import { Platform } from "react-native";
-import { useToast } from "react-native-toast-notifications";
-import { useAuth } from "./AuthContext";
+import { create } from "zustand";
 
-// --- Types ---
 export interface AppAddress {
   id: string;
   unitNo: string;
@@ -26,20 +15,48 @@ export interface AppAddress {
   pinCode: string;
   type: string;
 }
+
 export interface PreparedLocation {
   address: AppAddress;
   latitude: number | undefined;
   longitude: number | undefined;
   formatted_address: string;
 }
-// --- End Types ---
 
-// --- Address Utility Functions ---
+interface LocationState {
+  location: PreparedLocation | null;
+  loadingLocation: boolean;
+  isLocationTurnedOff: boolean;
+  locationErrorType: string;
+  permissionState: string;
+  shouldOpenDrawer: boolean;
+  hasRetriedLocation: boolean;
 
-const prepareLocationData = (
+  // Actions
+  setLocation: (location: PreparedLocation | null) => void;
+  setLoadingLocation: (loading: boolean) => void;
+  setLocationTurnedOff: (turnedOff: boolean) => void;
+  setLocationErrorType: (errorType: string) => void;
+  setPermissionState: (state: string) => void;
+  setShouldOpenDrawer: (should: boolean) => void;
+  checkPermissionStatus: () => Promise<string>;
+  getLiveLocation: (
+    isModal?: boolean,
+    func?: any,
+    showToast?: boolean,
+    userId?: string | null,
+    toastInstance?: any
+  ) => Promise<boolean>;
+  updateAddress: (address: PreparedLocation) => void;
+  prepareLocationData: (
+    locationData: any,
+    savedAddress?: any | null
+  ) => PreparedLocation | null;
+}
+
+const prepareLocationDataUtil = (
   locationData: any,
-  savedAddress: any | null = null,
-  formatAddressUtil: (addr: any) => string
+  savedAddress: any | null = null
 ): PreparedLocation | null => {
   try {
     if (savedAddress && savedAddress?.id) {
@@ -57,7 +74,7 @@ const prepareLocationData = (
         },
         latitude: savedAddress.latitude,
         longitude: savedAddress.longitude,
-        formatted_address: formatAddressUtil(savedAddress) || "",
+        formatted_address: formatAddress(savedAddress) || "",
       };
     } else if (locationData) {
       return {
@@ -83,99 +100,119 @@ const prepareLocationData = (
     return null;
   }
 };
-// --- End Utility Functions ---
 
-const LocationContext = createContext(undefined);
+export const useLocationStore = create<LocationState>((set, get) => ({
+  location: null,
+  loadingLocation: false,
+  isLocationTurnedOff: false,
+  locationErrorType: "",
+  permissionState: "prompt",
+  shouldOpenDrawer: false,
+  hasRetriedLocation: false,
 
-export function LocationProvider({ children }: { children: ReactNode }) {
-  const [location, setLocation] = useState<PreparedLocation | null>(null);
-  const [isLocationTurnedOff, setLocationTurnedOff] = useState<boolean>(false);
-  const [locationErrorType, setLocationErrorType] = useState("");
-  const [loadingLocation, setLoadingLocation] = useState<boolean>(false);
-  const [permissionState, setPermissionState] = useState<string>("prompt");
-  const [shouldOpenDrawer, setShouldOpenDrawer] = useState<boolean>(false);
-  const { user } = useAuth();
-  const toast = useToast();
-  const hasRetriedLocation = useRef<boolean>(false);
+  setLocation: (location) => set({ location }),
+  setLoadingLocation: (loadingLocation) => set({ loadingLocation }),
+  setLocationTurnedOff: (isLocationTurnedOff) => set({ isLocationTurnedOff }),
+  setLocationErrorType: (locationErrorType) => set({ locationErrorType }),
+  setPermissionState: (permissionState) => set({ permissionState }),
+  setShouldOpenDrawer: (shouldOpenDrawer) => set({ shouldOpenDrawer }),
 
-  const checkPermissionStatus = useCallback(async () => {
+  checkPermissionStatus: async () => {
     const { status } = await Location.getForegroundPermissionsAsync();
-    setPermissionState(status);
+    set({ permissionState: status });
     if (status === "denied") {
-      setLocationTurnedOff(true);
-      setLocationErrorType("permission-denied");
+      set({
+        isLocationTurnedOff: true,
+        locationErrorType: "permission-denied",
+      });
     }
     return status;
-  }, []);
+  },
 
-  const handleConfirm = useCallback(
-    async (locationData: any) => {
+  updateAddress: (address) => {
+    set({
+      location: address,
+      isLocationTurnedOff: false,
+      locationErrorType: "",
+    });
+  },
+
+  prepareLocationData: (locationData, savedAddress = null) => {
+    return prepareLocationDataUtil(locationData, savedAddress);
+  },
+
+  getLiveLocation: async (
+    isModal = false,
+    func = null,
+    showToast = true,
+    userId = null,
+    toastInstance = null
+  ) => {
+    const state = get();
+
+    const handleLocationError = (errorType: string) => {
+      console.error("Geolocation error:", errorType);
+      set({ loadingLocation: false });
+
+      if (
+        Platform.OS === "ios" &&
+        (errorType === "permission-denied" ||
+          errorType === "position-unavailable")
+      ) {
+        set({ shouldOpenDrawer: true, permissionState: "denied" });
+      } else {
+        set({ locationErrorType: errorType, isLocationTurnedOff: true });
+        if (errorType === "permission-denied") {
+          set({ permissionState: "denied", hasRetriedLocation: true });
+        }
+      }
+
+      if (errorType === "timeout") {
+        if (!state.hasRetriedLocation) {
+          set({ hasRetriedLocation: true });
+          setTimeout(
+            () =>
+              get().getLiveLocation(false, null, false, userId, toastInstance),
+            1000
+          );
+          return;
+        }
+        set({ isLocationTurnedOff: true });
+      }
+    };
+
+    const handleConfirm = async (locationData: any) => {
       try {
-        setLoadingLocation(true);
-        const updatedData = prepareLocationData(
-          locationData,
-          null,
-          formatAddress
-        );
+        set({ loadingLocation: true });
+        const updatedData = prepareLocationDataUtil(locationData, null);
 
         if (updatedData) {
-          setLocation(updatedData);
+          set({
+            location: updatedData,
+            isLocationTurnedOff: false,
+            locationErrorType: "",
+            hasRetriedLocation: false,
+          });
         }
 
-        setLocationTurnedOff(false);
-        setLocationErrorType("");
-        hasRetriedLocation.current = false;
         return updatedData;
       } catch (error) {
         console.error("Error confirming location:", error);
-        toast.show("Failed to process location data", { type: "danger" });
+        if (toastInstance) {
+          toastInstance.show("Failed to process location data", {
+            type: "danger",
+          });
+        }
         throw error;
       } finally {
-        setLoadingLocation(false);
+        set({ loadingLocation: false });
       }
-    },
-    [toast]
-  );
+    };
 
-  const handleLocationError = useCallback((errorType: string) => {
-    console.error("Geolocation error:", errorType);
-    setLoadingLocation(false);
-
-    if (
-      Platform.OS === "ios" &&
-      (errorType === "permission-denied" ||
-        errorType === "position-unavailable")
-    ) {
-      setShouldOpenDrawer(true);
-      setPermissionState("denied");
-    } else {
-      setLocationErrorType(errorType);
-      setLocationTurnedOff(true);
-      if (errorType === "permission-denied") {
-        setPermissionState("denied");
-        hasRetriedLocation.current = true;
-      }
-    }
-    if (errorType === "timeout") {
-      if (!hasRetriedLocation.current) {
-        hasRetriedLocation.current = true;
-        setTimeout(() => getLiveLocation(false, null, false), 1000);
-        return;
-      }
-      setLocationTurnedOff(true);
-    }
-  }, []);
-
-  const getLiveLocation = async (
-    isModal: boolean = false,
-    func?: any,
-    showToast: boolean = true
-  ) => {
     try {
-      setLoadingLocation(true);
-      setLocationErrorType("");
+      set({ loadingLocation: true, locationErrorType: "" });
 
-      // Step 1: Request location permissions
+      // Request location permissions
       let { status } = await Location.getForegroundPermissionsAsync();
 
       if (status !== "granted") {
@@ -189,11 +226,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      setPermissionState("granted");
+      set({ permissionState: "granted" });
 
-      // Step 2: Get GPS coordinates using expo-location
-      const accuracy = hasRetriedLocation.current
-        ? Location.Accuracy.High // if not work change this to Balanced
+      // Get GPS coordinates
+      const accuracy = state.hasRetriedLocation
+        ? Location.Accuracy.High
         : Location.Accuracy.High;
 
       let position;
@@ -214,7 +251,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
       const { latitude, longitude } = position.coords;
 
-      // Step 3: Use Google Geocoding API to get address from coordinates
+      // Use Google Geocoding API
       const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`
@@ -228,14 +265,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
       const address = data.results[0];
 
-      // Extract address components from Google response
       const getComponent = (type: string): string =>
         address.address_components.find((c: any) => c.types.includes(type))
           ?.long_name || "";
 
       const streetNumber = getComponent("street_number");
       const route = getComponent("route");
-
       const addressLine = [streetNumber, route].filter(Boolean).join(" ");
 
       const addressComponents = {
@@ -263,7 +298,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       const isNearbyAddress = await fetchNearbyAddress(
         latitude,
         longitude,
-        user?.id,
+        userId,
         null
       );
 
@@ -283,10 +318,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           type: isNearbyAddress?.data?.type,
           id: isNearbyAddress?.data?.id,
         };
-        // Confirm and update location
         await handleConfirm(nearbyAddress);
       } else {
-        // Confirm and update location
         await handleConfirm(locationData);
       }
 
@@ -294,54 +327,19 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       return true;
     } catch (error: any) {
       console.error("Error in getLiveLocation:", error);
-      setLoadingLocation(false);
+      set({ loadingLocation: false });
 
       if (error.message.includes("Timeout")) handleLocationError("timeout");
       else if (error.message.includes("Permission"))
         handleLocationError("permission-denied");
       else handleLocationError("unknown");
 
-      if (showToast) {
-        toast.show("Failed to get location. Please try again.", {
+      if (showToast && toastInstance) {
+        toastInstance.show("Failed to get location. Please try again.", {
           type: "danger",
         });
       }
       return false;
     }
-  };
-
-  const updateAddress = useCallback((address: PreparedLocation) => {
-    setLocation(address);
-    setLocationTurnedOff(false);
-    setLocationErrorType("");
-  }, []);
-
-  const contextValue: any = {
-    location,
-    loadingLocation,
-    isLocationTurnedOff,
-    locationErrorType,
-    permissionState,
-    shouldOpenDrawer,
-    updateAddress,
-    setLocation,
-    getLiveLocation,
-    checkPermissionStatus,
-    prepareLocationData,
-    formatAddress,
-  };
-
-  return (
-    <LocationContext.Provider value={contextValue}>
-      {children}
-    </LocationContext.Provider>
-  );
-}
-
-export const useLocation = () => {
-  const context = useContext(LocationContext);
-  if (context === undefined) {
-    throw new Error("useLocation must be used within a LocationProvider");
-  }
-  return context;
-};
+  },
+}));

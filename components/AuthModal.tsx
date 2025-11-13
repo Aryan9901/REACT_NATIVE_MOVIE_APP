@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthStore } from "@/stores";
 import { FontAwesome } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
@@ -15,7 +15,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 export default function AuthModal() {
   const { showAuthModal, setShowAuthModal, initiateLogin, verifyOTP, loading } =
-    useAuth();
+    useAuthStore();
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState("");
