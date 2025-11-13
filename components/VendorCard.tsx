@@ -248,6 +248,7 @@ export default function VendorCard({
           <TouchableOpacity
             className="bg-orange-500 rounded-lg py-2.5 mt-2 items-center justify-center"
             activeOpacity={0.8}
+            onPress={handlePress}
           >
             <Text className="text-white text-sm font-bold">Shop Now</Text>
           </TouchableOpacity>
