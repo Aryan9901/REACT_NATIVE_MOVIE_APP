@@ -1,3 +1,4 @@
+import { STORAGE_KEYS } from "@/lib/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
@@ -58,10 +59,6 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-const VENDOR_KEY = "@selected_vendor";
-const LOCATION_KEY = "@delivery_location";
-const CART_KEY = "@cart_items";
-
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [selectedVendor, setSelectedVendorState] = useState<Vendor | null>(
     null
@@ -78,9 +75,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const loadStoredData = async () => {
     try {
       const [vendorData, locationData, cartData] = await Promise.all([
-        AsyncStorage.getItem(VENDOR_KEY),
-        AsyncStorage.getItem(LOCATION_KEY),
-        AsyncStorage.getItem(CART_KEY),
+        AsyncStorage.getItem(STORAGE_KEYS.SELECTED_VENDOR),
+        AsyncStorage.getItem(STORAGE_KEYS.SELECTED_LOCATION),
+        AsyncStorage.getItem(STORAGE_KEYS.SAVED_CART),
       ]);
 
       if (vendorData) setSelectedVendorState(JSON.parse(vendorData));
@@ -96,9 +93,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const setSelectedVendor = async (vendor: Vendor | null) => {
     try {
       if (vendor) {
-        await AsyncStorage.setItem(VENDOR_KEY, JSON.stringify(vendor));
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.SELECTED_VENDOR,
+          JSON.stringify(vendor)
+        );
       } else {
-        await AsyncStorage.removeItem(VENDOR_KEY);
+        await AsyncStorage.removeItem(STORAGE_KEYS.SELECTED_VENDOR);
       }
       setSelectedVendorState(vendor);
 
@@ -114,9 +114,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const setDeliveryLocation = async (location: DeliveryLocation | null) => {
     try {
       if (location) {
-        await AsyncStorage.setItem(LOCATION_KEY, JSON.stringify(location));
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.SELECTED_LOCATION,
+          JSON.stringify(location)
+        );
       } else {
-        await AsyncStorage.removeItem(LOCATION_KEY);
+        await AsyncStorage.removeItem(STORAGE_KEYS.SELECTED_LOCATION);
       }
       setDeliveryLocationState(location);
     } catch (error) {
@@ -138,7 +141,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         newCart = [...cart, item];
       }
 
-      await AsyncStorage.setItem(CART_KEY, JSON.stringify(newCart));
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.SAVED_CART,
+        JSON.stringify(newCart)
+      );
       setCartState(newCart);
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -148,7 +154,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const removeFromCart = async (productId: string) => {
     try {
       const newCart = cart.filter((item) => item.productId !== productId);
-      await AsyncStorage.setItem(CART_KEY, JSON.stringify(newCart));
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.SAVED_CART,
+        JSON.stringify(newCart)
+      );
       setCartState(newCart);
     } catch (error) {
       console.error("Error removing from cart:", error);
@@ -165,7 +174,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const newCart = cart.map((item) =>
         item.productId === productId ? { ...item, quantity } : item
       );
-      await AsyncStorage.setItem(CART_KEY, JSON.stringify(newCart));
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.SAVED_CART,
+        JSON.stringify(newCart)
+      );
       setCartState(newCart);
     } catch (error) {
       console.error("Error updating cart quantity:", error);
@@ -174,7 +186,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = async () => {
     try {
-      await AsyncStorage.removeItem(CART_KEY);
+      await AsyncStorage.removeItem(STORAGE_KEYS.SAVED_CART);
       setCartState([]);
     } catch (error) {
       console.error("Error clearing cart:", error);

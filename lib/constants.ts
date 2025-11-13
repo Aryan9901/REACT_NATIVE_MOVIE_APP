@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   GUEST_MODE: "#guestMode",
   SELECTED_VENDOR: "@selected_vendor",
   SELECTED_LOCATION: "@selectedLocation",
+  SAVED_CART: "@savedCart",
 };
 
 export const ORDER_STATUS = {
