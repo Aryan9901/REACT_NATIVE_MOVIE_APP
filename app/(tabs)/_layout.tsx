@@ -148,6 +148,14 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
+        name="store"
+        options={{
+          title: "Store",
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
         name="faq"
         options={{
           title: "FAQ",
