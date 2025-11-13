@@ -39,18 +39,13 @@ export const getAuthHeaders = async () => {
 
 export const sendOtp = async (mobile: string): Promise<any> => {
   const url = `${API_URL.BASE_AUTH}/rest/big-local/api/v1/auth/otp/send?role=${USER_ROLES.USER}&phoneNumber=%2B91${mobile}`;
-  console.log(url);
-
   const { data } = await axios.post(url);
-  console.log(data);
-
   return data;
 };
 
 export const verifyOtp = async (otp: string, mobile: string): Promise<any> => {
   const url = `${API_URL.BASE_AUTH}/rest/big-local/api/v1/auth/otp/verify?otp=${otp}&role=${USER_ROLES.USER}&phoneNumber=%2B91${mobile}`;
   const { data } = await axios.post(url);
-  console.log(data);
   return data;
 };
 
@@ -118,4 +113,9 @@ export const updateUserProfile = async (
     { headers }
   );
   return data as User;
+};
+
+export const logoutUser = async (phone: string) => {
+  const url = `${API_URL.BASE_AUTH}/rest/big-local/api/v1/auth/logout?phoneNumber=${phone}&role=${USER_ROLES.USER}`;
+  await axios.post(url);
 };

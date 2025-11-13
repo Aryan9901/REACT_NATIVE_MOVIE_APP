@@ -18,6 +18,9 @@ export const STORAGE_KEYS = {
   MOBILE: "@mobile",
   SESSION_TOKEN: "@sessionToken",
   REFRESH_TOKEN: "@refreshToken",
+  GUEST_MODE: "#guestMode",
+  SELECTED_VENDOR: "@selected_vendor",
+  SELECTED_LOCATION: "@selectedLocation",
 };
 
 export const ORDER_STATUS = {

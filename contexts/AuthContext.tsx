@@ -51,8 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isGuestMode, setIsGuestMode] = useState(true);
 
-  console.log(loading);
-
   const isAuthenticated = !!user?.id;
 
   useEffect(() => {
@@ -73,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userData);
         }
       } else {
+        await AsyncStorage.setItem(STORAGE_KEYS.GUEST_MODE, "true");
         setIsGuestMode(true);
       }
     } catch (error) {
@@ -147,9 +146,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      const mobile = await AsyncStorage.getItem(STORAGE_KEYS.MOBILE);
+      console.log(mobile);
+
+      AuthService.logoutUser(`+91${mobile}` as any);
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.MOBILE,
         STORAGE_KEYS.SESSION_TOKEN,
+        STORAGE_KEYS.REFRESH_TOKEN,
       ]);
       setUser(null);
     } catch (error) {

@@ -29,9 +29,6 @@ export const fetchUserOrders = async (
   userId: string
 ): Promise<Order[]> => {
   const sessionToken = await AsyncStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
-
-  console.log(sessionToken);
-
   if (!sessionToken || !userId) {
     throw new Error("No session token or user ID found");
   }

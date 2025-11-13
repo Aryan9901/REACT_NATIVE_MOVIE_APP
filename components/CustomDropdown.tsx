@@ -37,7 +37,6 @@ export default function CustomDropdown({
       <SelectDropdown
         data={options}
         onSelect={(option, index) => {
-          console.log(option, index);
           handleSelect(option.value);
         }}
         defaultValueByIndex={defaultIndex >= 0 ? defaultIndex : 0}

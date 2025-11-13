@@ -30,9 +30,7 @@ interface MenuItem {
 
 const Profile = () => {
   const router = useRouter();
-  const { isGuestMode, user, refreshUser } = useAuth();
-
-  console.log("User object:", JSON.stringify(user, null, 2));
+  const { isGuestMode, user, refreshUser, logout } = useAuth();
 
   const handleRefresh = async () => {
     try {
@@ -52,7 +50,7 @@ const Profile = () => {
         text: "Logout",
         style: "destructive",
         onPress: () => {
-          console.log("Logout");
+          logout();
         },
       },
     ]);

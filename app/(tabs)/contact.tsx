@@ -57,7 +57,6 @@ export default function Contact() {
       setFormData({ ...formData, message: "" });
     } catch (err: unknown) {
       if (err instanceof EmailJSResponseStatus) {
-        console.log("EmailJS Request Failed...", err);
         Alert.alert("Error", `Failed to send message: ${err.text}`);
       } else {
         console.log("ERROR", err);

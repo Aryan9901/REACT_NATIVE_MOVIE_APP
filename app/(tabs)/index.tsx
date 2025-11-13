@@ -1,5 +1,217 @@
-import { View } from "react-native";
+import AdvancedSearch from "@/components/AdvancedSearch";
+import HomeHeader from "@/components/HomeHeader";
+import VendorList from "@/components/VendorList";
+import {
+  getCategoryIcon,
+  getFallbackIconName,
+} from "@/constants/categoryIcons";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "@/contexts/LocationContext";
+import { fetchNearbyVendors } from "@/services/vendor.service";
+import {
+  calculateDistancesForVendors,
+  DistanceResult,
+} from "@/utils/distanceUtils";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+
+interface AttributeValueProps {
+  name: string;
+  value: string;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  shopName: string;
+  contactNo: string;
+  profileImage: string;
+  vendorImages: string[];
+  vendorCategories: any[];
+  attributeValues: AttributeValueProps[];
+  deliveryRadius: number;
+  address?: {
+    latitude: number;
+    longitude: number;
+    city?: string;
+    state?: string;
+  };
+}
 
 export default function Index() {
-  return <View className="flex-1 bg-primary"></View>;
+  const {
+    getLiveLocation,
+    location,
+    isLocationTurnedOff,
+    loadingLocation,
+  }: any = useLocation();
+  const { user } = useAuth();
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [filteredVendors, setFilteredVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [distanceMap, setDistanceMap] = useState<Map<string, DistanceResult>>(
+    new Map()
+  );
+
+  useEffect(() => {
+    const fetchVendors = async () => {
+      if (!location || !location?.latitude || !location?.longitude) {
+        try {
+          await getLiveLocation(false, null, true);
+        } catch (error) {
+          console.error("Failed to get location:", error);
+          setLoading(false);
+        }
+      } else {
+        setLoading(true);
+        try {
+          const response = await fetchNearbyVendors(
+            location?.latitude,
+            location?.longitude,
+            user
+          );
+
+          if (response && Array.isArray(response)) {
+            const allCategories = new Set<string>();
+            response.forEach((vendor: Vendor) => {
+              vendor.vendorCategories?.forEach((cat: any) => {
+                allCategories.add(cat.name);
+              });
+            });
+            setCategories(["All", ...Array.from(allCategories)]);
+
+            // Calculate distances for all vendors
+            if (location?.latitude && location?.longitude) {
+              calculateDistancesForVendors(
+                location.latitude,
+                location.longitude,
+                response
+              ).then((distances) => {
+                setDistanceMap(distances);
+
+                // Add distance to vendor objects
+                const vendorsWithDistance = response.map((vendor: Vendor) => {
+                  const distanceInfo = distances.get(vendor.id);
+                  return {
+                    ...vendor,
+                    distance: distanceInfo
+                      ? distanceInfo.distanceValue / 1000
+                      : 0,
+                  };
+                });
+
+                setVendors(vendorsWithDistance);
+                setFilteredVendors(vendorsWithDistance);
+              });
+            } else {
+              setVendors(response);
+              setFilteredVendors(response);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch vendors:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchVendors();
+  }, [location]);
+
+  const handleFilteredResults = (filtered: Vendor[]) => {
+    setFilteredVendors(filtered);
+  };
+
+  const handleVendorSelect = (vendor: Vendor) => {
+    console.log("Vendor pressed:", vendor.id);
+  };
+
+  return (
+    <View className="flex-1 bg-gray-50">
+      <HomeHeader />
+
+      {/* Advanced Search with Filters */}
+      <AdvancedSearch
+        vendors={vendors}
+        onFilteredResults={handleFilteredResults}
+        selectedCategory={selectedCategory}
+      />
+
+      {/* Category Filter */}
+      {categories.length > 0 && (
+        <View className="bg-white border-b border-gray-100">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="px-4 py-2"
+            contentContainerStyle={{ gap: 12 }}
+          >
+            {categories.map((category) => {
+              const isSelected =
+                (category === "All" && !selectedCategory) ||
+                selectedCategory === category;
+
+              // Get category icon from constants
+              const categoryIcon = getCategoryIcon(category);
+              const fallbackIcon = getFallbackIconName(category);
+
+              return (
+                <TouchableOpacity
+                  key={category}
+                  onPress={() =>
+                    setSelectedCategory(category === "All" ? null : category)
+                  }
+                  className="items-center"
+                >
+                  <View
+                    className={`size-16 rounded-2xl items-center justify-center mb-2 ${
+                      isSelected ? "bg-orange-300" : "bg-gray-100"
+                    }`}
+                  >
+                    {categoryIcon ? (
+                      <Image
+                        source={categoryIcon}
+                        className="size-14"
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Ionicons
+                        name={fallbackIcon as any}
+                        size={28}
+                        color={isSelected ? "#F97316" : "#6B7280"}
+                      />
+                    )}
+                  </View>
+                  <Text
+                    className={`text-xs font-medium text-center ${
+                      isSelected ? "text-orange-600" : "text-gray-700"
+                    }`}
+                    numberOfLines={2}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Vendor List */}
+      <VendorList
+        vendors={filteredVendors}
+        distanceMap={distanceMap}
+        loading={loading}
+        loadingLocation={loadingLocation}
+        isLocationTurnedOff={isLocationTurnedOff}
+        selectedCategory={selectedCategory}
+        onEnableLocation={() => getLiveLocation(false, null, true)}
+        onVendorPress={handleVendorSelect}
+      />
+    </View>
+  );
 }

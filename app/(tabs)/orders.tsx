@@ -9,7 +9,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { useRouter } from "expo-router";
+import { router, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -57,7 +57,7 @@ const EmptyState = ({
     <TouchableOpacity
       className="px-10 py-4 bg-orange-600 rounded-xl"
       activeOpacity={0.7}
-      onPress={() => console.log("Navigate to home")}
+      onPress={() => router.push("/")}
     >
       <Text className="text-white font-bold text-base">Start Shopping</Text>
     </TouchableOpacity>

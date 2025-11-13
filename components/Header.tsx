@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Entypo, Feather } from "@expo/vector-icons";
+import { Entypo, Feather, FontAwesome } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
@@ -41,8 +41,6 @@ function Header({ page }: HeaderProps) {
   };
 
   useEffect(() => {
-    console.log("hii");
-
     refreshUser();
   }, []);
 
@@ -96,7 +94,7 @@ function Header({ page }: HeaderProps) {
 
         {/* Right-side Icons */}
         <View className="flex-row items-center gap-2">
-          {isGuestMode && (
+          {isGuestMode ? (
             <TouchableOpacity
               onPress={() => setShowAuthModal(true)}
               className="px-3 py-2 bg-orange-600 rounded-md"
@@ -104,6 +102,13 @@ function Header({ page }: HeaderProps) {
               <Text className="text-white text-base font-semibold">
                 Sign In
               </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => router.push("/profile")}
+              className="px-2"
+            >
+              <FontAwesome name="user-circle" size={32} color="black" />
             </TouchableOpacity>
           )}
         </View>
