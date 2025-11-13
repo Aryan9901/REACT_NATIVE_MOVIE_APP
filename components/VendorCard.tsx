@@ -1,3 +1,4 @@
+import { useLocation } from "@/contexts/LocationContext";
 import { useStore } from "@/contexts/StoreContext";
 import { DistanceResult } from "@/utils/distanceUtils";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,10 +40,12 @@ export default function VendorCard({
   onPress,
 }: VendorCardProps) {
   const router = useRouter();
-  const { setSelectedVendor } = useStore();
+  const { setSelectedVendor, setDeliveryLocation } = useStore();
+  const { location } = useLocation();
 
   const handlePress = () => {
     setSelectedVendor(vendor);
+    setDeliveryLocation(location);
     router.push("/store");
     onPress?.();
   };
