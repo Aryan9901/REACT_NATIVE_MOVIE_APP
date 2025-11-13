@@ -172,7 +172,7 @@ export default function VendorCard({
 
   return (
     <TouchableOpacity
-      className="bg-white rounded-md mb-2 max-h-40 overflow-hidden shadow-xl shadow-black border border-gray-100"
+      className="bg-white rounded-md mb-2 max-h-40 overflow-hidden shadow-lg shadow-white border border-gray-100"
       activeOpacity={1}
       onPress={handlePress}
     >

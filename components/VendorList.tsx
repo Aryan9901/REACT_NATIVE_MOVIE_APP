@@ -116,7 +116,7 @@ export default function VendorList({
         />
       )}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={{ padding: 16 }}
+      contentContainerStyle={{ padding: 8 }}
       showsVerticalScrollIndicator={false}
     />
   );
