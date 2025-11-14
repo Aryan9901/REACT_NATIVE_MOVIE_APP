@@ -5,7 +5,7 @@ import { productService } from "@/services/product.service";
 import { useAuthStore, useStoreStore } from "@/stores";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -39,6 +39,11 @@ export default function StorePage() {
   const router = useRouter();
   const { user, isGuestMode } = useAuthStore();
   const { selectedVendor, cartItemCount } = useStoreStore();
+
+  const categoryScrollRef = useRef<ScrollView>(null);
+  const subCategoryScrollRef = useRef<ScrollView>(null);
+  const categoryRefs = useRef<{ [key: string]: View | null }>({});
+  const subCategoryRefs = useRef<{ [key: string]: View | null }>({});
 
   const [categories, setCategories] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState<any>(null);
@@ -191,6 +196,45 @@ export default function StorePage() {
     setSelectedSubCategory(
       leafSubCategories.length > 0 ? leafSubCategories[0] : null
     );
+
+    // Scroll category into view - centered
+    setTimeout(() => {
+      if (categoryRefs.current[category.id] && categoryScrollRef.current) {
+        categoryRefs.current[category.id]?.measureLayout(
+          categoryScrollRef.current as any,
+          (x: number, _y: number, width: number) => {
+            categoryScrollRef.current?.scrollTo({
+              x: x - 120, // Offset to center better
+              animated: true,
+            });
+          },
+          () => {}
+        );
+      }
+    }, 100);
+  };
+
+  const handleSubCategoryChange = (subCategory: any) => {
+    setSelectedSubCategory(subCategory);
+
+    // Scroll subcategory into view - centered
+    setTimeout(() => {
+      if (
+        subCategoryRefs.current[subCategory.id] &&
+        subCategoryScrollRef.current
+      ) {
+        subCategoryRefs.current[subCategory.id]?.measureLayout(
+          subCategoryScrollRef.current as any,
+          (_x: number, y: number, _width: number, height: number) => {
+            subCategoryScrollRef.current?.scrollTo({
+              y: y - 150, // Offset to center in viewport
+              animated: true,
+            });
+          },
+          () => {}
+        );
+      }
+    }, 100);
   };
 
   useEffect(() => {
@@ -214,6 +258,12 @@ export default function StorePage() {
       setSelectedSubCategory(
         leafSubCategories.length > 0 ? leafSubCategories[0] : null
       );
+
+      // Scroll to initial positions
+      setTimeout(() => {
+        categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
+        subCategoryScrollRef.current?.scrollTo({ y: 0, animated: false });
+      }, 100);
     }
     setIsLoading(false);
   }, [selectedVendor]);
@@ -238,30 +288,39 @@ export default function StorePage() {
       <View className="bg-white border-b border-gray-200 pt-2 pb-3 px-4">
         {categories.length > 0 && (
           <ScrollView
+            ref={categoryScrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             className="mb-2"
+            snapToInterval={120}
+            decelerationRate="fast"
+            snapToAlignment="start"
           >
             {categories.map((category: any) => (
-              <TouchableOpacity
+              <View
                 key={category.id}
-                onPress={() => handleCategoryChange(category)}
-                className={`mr-4 pb-2 ${
-                  activeCategory?.id === category.id
-                    ? "border-b-2 border-orange-500"
-                    : ""
-                }`}
+                ref={(ref: any) => (categoryRefs.current[category.id] = ref)}
+                collapsable={false}
               >
-                <Text
-                  className={`text-sm font-medium ${
+                <TouchableOpacity
+                  onPress={() => handleCategoryChange(category)}
+                  className={`mr-4 pb-2 ${
                     activeCategory?.id === category.id
-                      ? "text-orange-500"
-                      : "text-gray-700"
+                      ? "border-b-2 border-orange-500"
+                      : ""
                   }`}
                 >
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    className={`text-sm font-medium ${
+                      activeCategory?.id === category.id
+                        ? "text-orange-500"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </ScrollView>
         )}
@@ -320,48 +379,62 @@ export default function StorePage() {
       <View className="flex-row h-full">
         {subCategories.length > 0 && (
           <ScrollView
-            className="w-[20%] pb-12 bg-white border-r border-gray-200"
+            ref={subCategoryScrollRef}
+            className="w-[20%]  bg-white border-r border-gray-200"
             showsVerticalScrollIndicator={false}
+            snapToInterval={100}
+            decelerationRate="fast"
+            snapToAlignment="start"
           >
             {subCategories.map((subCategory: any) => {
               const isSelected = selectedSubCategory?.id === subCategory.id;
               return (
-                <TouchableOpacity
+                <View
                   key={subCategory.id}
-                  onPress={() => setSelectedSubCategory(subCategory)}
-                  className={`items-center py-2 ${
-                    isSelected ? "bg-orange-50" : ""
-                  }`}
+                  ref={(ref: any) =>
+                    (subCategoryRefs.current[subCategory.id] = ref)
+                  }
+                  collapsable={false}
                 >
-                  <View className="size-16 rounded-full bg-gray-100 items-center justify-center mb-1 overflow-hidden">
-                    {getSubCategoryIcon(subCategory.name) ? (
-                      <Image
-                        source={getSubCategoryIcon(subCategory.name)}
-                        className="w-full h-full"
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <Ionicons name="cube-outline" size={24} color="#9CA3AF" />
-                    )}
-                  </View>
-                  <Text
-                    className={`text-[10px] text-center leading-tight ${
-                      isSelected
-                        ? "text-orange-600 font-semibold"
-                        : "text-gray-700"
+                  <TouchableOpacity
+                    onPress={() => handleSubCategoryChange(subCategory)}
+                    className={`items-center py-2 ${
+                      isSelected ? "bg-orange-50" : ""
                     }`}
-                    numberOfLines={2}
                   >
-                    {subCategory.name}
-                  </Text>
-                  {isSelected && (
-                    <View className="absolute right-0 top-0 bottom-0 w-1 bg-orange-600 rounded-l-full" />
-                  )}
-                </TouchableOpacity>
+                    <View className="size-16 rounded-full bg-gray-100 items-center justify-center mb-1 overflow-hidden">
+                      {getSubCategoryIcon(subCategory.name) ? (
+                        <Image
+                          source={getSubCategoryIcon(subCategory.name)}
+                          className="w-full h-full"
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <Ionicons
+                          name="cube-outline"
+                          size={24}
+                          color="#9CA3AF"
+                        />
+                      )}
+                    </View>
+                    <Text
+                      className={`text-[10px] text-center leading-tight ${
+                        isSelected
+                          ? "text-orange-600 font-semibold"
+                          : "text-gray-700"
+                      }`}
+                      numberOfLines={2}
+                    >
+                      {subCategory.name}
+                    </Text>
+                    {isSelected && (
+                      <View className="absolute right-0 top-0 bottom-0 w-1 bg-orange-600 rounded-l-full" />
+                    )}
+                  </TouchableOpacity>
+                </View>
               );
             })}
-
-            <View className="h-20 w-16 rounded-full items-center justify-center mb-1 overflow-hidden"></View>
+            <View className="h-96 rounded-full items-center justify-center mb-1 overflow-hidden"></View>
           </ScrollView>
         )}
 
