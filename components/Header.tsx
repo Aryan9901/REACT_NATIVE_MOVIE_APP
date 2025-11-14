@@ -91,7 +91,6 @@ function Header({ page }: HeaderProps) {
             </TouchableOpacity>
           )}
         </View>
-
         {/* Right-side Icons */}
         <View className="flex-row items-center gap-2">
           {isGuestMode ? (

@@ -1,6 +1,7 @@
 // app/components/LocationModal.tsx
 import { useGooglePlaces } from "@/hooks/useGooglePlaces";
 import { useAuthStore, useLocationStore } from "@/stores";
+import { formatAddress } from "@/utils/locationUtils";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -49,7 +50,6 @@ export default function LocationModal({
     locationErrorType,
     updateAddress,
     prepareLocationData,
-    formatAddress,
   }: any = useLocationStore();
   const { user } = useAuthStore();
   const router = useRouter();

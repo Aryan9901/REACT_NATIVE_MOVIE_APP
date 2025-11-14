@@ -30,6 +30,7 @@ export default function RootLayout() {
             <Stack.Screen name="terms" options={{ headerShown: false }} />
             <Stack.Screen name="privacy" options={{ headerShown: false }} />
             <Stack.Screen name="shipping" options={{ headerShown: false }} />
+            <Stack.Screen name="store" options={{ headerShown: false }} />
             <Stack.Screen
               name="return-policy"
               options={{ headerShown: false }}
