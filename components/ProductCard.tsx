@@ -1,5 +1,7 @@
 import { useStoreStore } from "@/stores";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -20,6 +22,7 @@ export default function ProductCard({
   category,
   subCategory,
 }: ProductCardProps) {
+  const router = useRouter();
   const { addToCart, cart } = useStoreStore();
   const [isAdding, setIsAdding] = useState(false);
 
@@ -76,8 +79,28 @@ export default function ProductCard({
     }
   };
 
+  const handleProductPress = async () => {
+    try {
+      // Store product data in AsyncStorage
+      await AsyncStorage.setItem("selectedProduct", JSON.stringify(product));
+      if (subCategory) {
+        await AsyncStorage.setItem(
+          "selectedSubCategory",
+          JSON.stringify(subCategory)
+        );
+      }
+      router.push("/product-details");
+    } catch (error) {
+      console.error("Error storing product data:", error);
+    }
+  };
+
   return (
-    <View className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <TouchableOpacity
+      onPress={handleProductPress}
+      activeOpacity={0.9}
+      className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+    >
       {/* Product Image */}
       <View className="relative">
         {imageUrl ? (
@@ -143,7 +166,10 @@ export default function ProductCard({
           <>
             {quantityInCart === 0 ? (
               <TouchableOpacity
-                onPress={handleAddToCart}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleAddToCart();
+                }}
                 disabled={isAdding}
                 className="bg-orange-500 rounded-lg py-2 items-center justify-center"
                 activeOpacity={0.8}
@@ -159,7 +185,10 @@ export default function ProductCard({
             ) : (
               <View className="flex-row items-center justify-between bg-orange-500 rounded-lg py-1 px-2">
                 <TouchableOpacity
-                  onPress={handleDecrement}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDecrement();
+                  }}
                   className="w-8 h-8 items-center justify-center"
                   activeOpacity={0.7}
                 >
@@ -167,7 +196,10 @@ export default function ProductCard({
                 </TouchableOpacity>
                 <Text className="text-white font-bold">{quantityInCart}</Text>
                 <TouchableOpacity
-                  onPress={handleIncrement}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleIncrement();
+                  }}
                   disabled={isAdding}
                   className="w-8 h-8 items-center justify-center"
                   activeOpacity={0.7}
@@ -183,6 +215,6 @@ export default function ProductCard({
           </>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
