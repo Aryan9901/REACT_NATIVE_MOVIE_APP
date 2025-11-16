@@ -28,10 +28,15 @@ interface Vendor {
 interface CartItem {
   id: string;
   productId: string;
+  variantId: string;
   name: string;
   price: number;
   quantity: number;
   image?: string;
+  variant?: string;
+  unit?: string;
+  mrp?: number;
+  netPrice?: number;
 }
 
 interface DeliveryLocation {
@@ -56,8 +61,8 @@ interface StoreState {
   setSelectedVendor: (vendor: Vendor | null) => void;
   setDeliveryLocation: (location: DeliveryLocation | null) => void;
   addToCart: (item: CartItem) => void;
-  removeFromCart: (productId: string) => void;
-  updateCartQuantity: (productId: string, quantity: number) => void;
+  removeFromCart: (variantId: string) => void;
+  updateCartQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
   loadStoredData: () => Promise<void>;
   setSelectedCategory: (category: any, subCategory: any) => void;
@@ -149,13 +154,13 @@ export const useStoreStore = create<StoreState>((set, get) => ({
     try {
       const { cart } = get();
       const existingIndex = cart.findIndex(
-        (i) => i.productId === item.productId
+        (i) => i.variantId === item.variantId
       );
       let newCart: CartItem[];
 
       if (existingIndex >= 0) {
         newCart = [...cart];
-        newCart[existingIndex].quantity += item.quantity;
+        newCart[existingIndex].quantity = item.quantity;
       } else {
         newCart = [...cart, item];
       }
@@ -180,10 +185,10 @@ export const useStoreStore = create<StoreState>((set, get) => ({
     }
   },
 
-  removeFromCart: async (productId) => {
+  removeFromCart: async (variantId) => {
     try {
       const { cart } = get();
-      const newCart = cart.filter((item) => item.productId !== productId);
+      const newCart = cart.filter((item) => item.variantId !== variantId);
 
       await AsyncStorage.setItem(
         STORAGE_KEYS.SAVED_CART,
@@ -205,16 +210,16 @@ export const useStoreStore = create<StoreState>((set, get) => ({
     }
   },
 
-  updateCartQuantity: async (productId, quantity) => {
+  updateCartQuantity: async (variantId, quantity) => {
     try {
       if (quantity <= 0) {
-        get().removeFromCart(productId);
+        get().removeFromCart(variantId);
         return;
       }
 
       const { cart } = get();
       const newCart = cart.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item
+        item.variantId === variantId ? { ...item, quantity } : item
       );
 
       await AsyncStorage.setItem(
