@@ -1,19 +1,9 @@
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useStoreStore } from "@/stores";
 import { Entypo, Feather, FontAwesome } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-// Mock data for now - will be replaced with real data later
-const getMockVendor = () => ({
-  id: "1",
-  shopName: "Fresh Market Store",
-  vendorName: "John's Shop",
-});
-
-const getMockCartItems = () => 3;
-const getMockIsGuest = () => true;
 
 interface HeaderProps {
   page?: string;
@@ -23,10 +13,9 @@ function Header({ page }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { refreshUser, isAuthenticated, setShowAuthModal } = useAuthStore();
+  const { selectedVendor } = useStoreStore();
 
-  const vendor = getMockVendor();
-  const totalItems = getMockCartItems();
-  const isCartEmpty = totalItems === 0;
+  const vendor = selectedVendor;
   const isGuestMode = !isAuthenticated;
 
   const isStorePage = pathname === "/store";

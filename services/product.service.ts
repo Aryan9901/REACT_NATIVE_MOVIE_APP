@@ -43,14 +43,18 @@ export const productService = {
           : product.productImageUrl
           ? [product.productImageUrl]
           : [],
-        // Ensure productVariants structure
+        // Ensure productVariants structure - filter out null values
         productVariants:
-          product.productVariants?.map((variant: any) => ({
-            ...variant,
-            mrp: variant.mrp || 0,
-            netPrice: variant.netPrice || 0,
-            available: variant.available === true,
-          })) || [],
+          product.productVariants
+            ?.filter(
+              (variant: any) => variant !== null && variant !== undefined
+            )
+            .map((variant: any) => ({
+              ...variant,
+              mrp: variant.mrp || 0,
+              netPrice: variant.netPrice || 0,
+              available: variant.available === true,
+            })) || [],
       }));
 
       if (!processedData || processedData.length === 0) {

@@ -49,6 +49,8 @@ interface StoreState {
   isLoading: boolean;
   cartTotal: number;
   cartItemCount: number;
+  selectedCategory: any | null;
+  selectedSubCategory: any | null;
 
   // Actions
   setSelectedVendor: (vendor: Vendor | null) => void;
@@ -58,6 +60,7 @@ interface StoreState {
   updateCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   loadStoredData: () => Promise<void>;
+  setSelectedCategory: (category: any, subCategory: any) => void;
 }
 
 export const useStoreStore = create<StoreState>((set, get) => ({
@@ -67,6 +70,8 @@ export const useStoreStore = create<StoreState>((set, get) => ({
   isLoading: true,
   cartTotal: 0,
   cartItemCount: 0,
+  selectedCategory: null,
+  selectedSubCategory: null,
 
   loadStoredData: async () => {
     try {
@@ -239,5 +244,9 @@ export const useStoreStore = create<StoreState>((set, get) => ({
     } catch (error) {
       console.error("Error clearing cart:", error);
     }
+  },
+
+  setSelectedCategory: (category, subCategory) => {
+    set({ selectedCategory: category, selectedSubCategory: subCategory });
   },
 }));

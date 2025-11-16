@@ -38,12 +38,24 @@ const getLeafNodes = (nodes: any[]) => {
 export default function StorePage() {
   const router = useRouter();
   const { user, isGuestMode } = useAuthStore();
-  const { selectedVendor, cartItemCount } = useStoreStore();
+  const {
+    selectedVendor,
+    cartItemCount,
+    selectedCategory: storeSelectedCategory,
+    selectedSubCategory: storeSelectedSubCategory,
+    setSelectedCategory,
+  } = useStoreStore();
 
   const categoryScrollRef = useRef<ScrollView>(null);
   const subCategoryScrollRef = useRef<ScrollView>(null);
   const categoryRefs = useRef<{ [key: string]: View | null }>({});
   const subCategoryRefs = useRef<{ [key: string]: View | null }>({});
+
+  // Check if vendor is showcase-only
+  const isShowcaseOnly =
+    selectedVendor?.attributeValues?.find(
+      (attr: any) => attr?.name === "isShowcaseOnly"
+    )?.value === "true";
 
   const [categories, setCategories] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState<any>(null);
@@ -243,27 +255,82 @@ export default function StorePage() {
       return;
     }
 
+    // Redirect to profile page if vendor is showcase-only
+    if (isShowcaseOnly) {
+      router.replace("/vendor/profile");
+      return;
+    }
+
     const availableCategories = selectedVendor.vendorCategories.filter(
       (cat: any) => cat.available
     );
     setCategories(availableCategories);
 
     if (availableCategories.length > 0) {
-      const initialCategory = availableCategories[0];
-      setActiveCategory(initialCategory);
-      const leafSubCategories = getLeafNodes(
-        initialCategory?.subCategories || []
-      );
-      setSubCategories(leafSubCategories);
-      setSelectedSubCategory(
-        leafSubCategories.length > 0 ? leafSubCategories[0] : null
-      );
+      // Check if there's a pre-selected category from the store
+      if (storeSelectedCategory && storeSelectedSubCategory) {
+        setActiveCategory(storeSelectedCategory);
+        const leafSubCategories = getLeafNodes(
+          storeSelectedCategory?.subCategories || []
+        );
+        setSubCategories(leafSubCategories);
+        setSelectedSubCategory(storeSelectedSubCategory);
 
-      // Scroll to initial positions
-      setTimeout(() => {
-        categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
-        subCategoryScrollRef.current?.scrollTo({ y: 0, animated: false });
-      }, 100);
+        // Clear the stored selection after using it
+        setSelectedCategory(null, null);
+
+        // Scroll to selected category and subcategory
+        setTimeout(() => {
+          if (
+            categoryRefs.current[storeSelectedCategory.id] &&
+            categoryScrollRef.current
+          ) {
+            categoryRefs.current[storeSelectedCategory.id]?.measureLayout(
+              categoryScrollRef.current as any,
+              (x: number, _y: number, width: number) => {
+                categoryScrollRef.current?.scrollTo({
+                  x: x - 120,
+                  animated: true,
+                });
+              },
+              () => {}
+            );
+          }
+
+          if (
+            subCategoryRefs.current[storeSelectedSubCategory.id] &&
+            subCategoryScrollRef.current
+          ) {
+            subCategoryRefs.current[storeSelectedSubCategory.id]?.measureLayout(
+              subCategoryScrollRef.current as any,
+              (_x: number, y: number, _width: number, height: number) => {
+                subCategoryScrollRef.current?.scrollTo({
+                  y: y - 150,
+                  animated: true,
+                });
+              },
+              () => {}
+            );
+          }
+        }, 300);
+      } else {
+        // Default to first category
+        const initialCategory = availableCategories[0];
+        setActiveCategory(initialCategory);
+        const leafSubCategories = getLeafNodes(
+          initialCategory?.subCategories || []
+        );
+        setSubCategories(leafSubCategories);
+        setSelectedSubCategory(
+          leafSubCategories.length > 0 ? leafSubCategories[0] : null
+        );
+
+        // Scroll to initial positions
+        setTimeout(() => {
+          categoryScrollRef.current?.scrollTo({ x: 0, animated: false });
+          subCategoryScrollRef.current?.scrollTo({ y: 0, animated: false });
+        }, 100);
+      }
     }
     setIsLoading(false);
   }, [selectedVendor]);

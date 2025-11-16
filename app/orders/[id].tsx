@@ -193,9 +193,9 @@ const OrderTracking = ({ order }: any) => {
   const trackingSteps = buildTrackingSteps();
 
   return (
-    <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+    <View className="bg-white rounded-xl border border-gray-200 py-4 px-2 mb-4">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View className="flex-row items-start" style={{ minWidth: 400 }}>
+        <View className="flex-row w-full items-start" style={{ minWidth: 180 }}>
           {trackingSteps.map((step, index) => {
             const isLast = index === trackingSteps.length - 1;
             const isCancelled = step.status === "cancelled";
@@ -203,7 +203,7 @@ const OrderTracking = ({ order }: any) => {
             const isPending = step.status === "pending";
 
             return (
-              <View key={step.key} className="flex-1 items-center px-2">
+              <View key={step.key} className="items-center px-2">
                 {/* Step Icon and Connector */}
                 <View className="items-center mb-2 relative w-full">
                   {/* Connector Line Before */}

@@ -42,10 +42,23 @@ export default function VendorCard({
   const { setSelectedVendor, setDeliveryLocation } = useStoreStore();
   const { location }: any = useLocationStore();
 
+  // Check if vendor is showcase-only (profile view only, no shopping)
+  const isShowcaseOnly =
+    vendor?.attributeValues?.find(
+      (attr: AttributeValueProps) => attr?.name === "isShowcaseOnly"
+    )?.value === "true";
+
   const handlePress = () => {
     setSelectedVendor(vendor);
     setDeliveryLocation(location);
-    router.push("/store");
+
+    // Navigate to profile page for showcase-only vendors, otherwise to store
+    if (isShowcaseOnly) {
+      router.push("/vendor/profile");
+    } else {
+      router.push("/store");
+    }
+
     onPress?.();
   };
 
@@ -243,13 +256,15 @@ export default function VendorCard({
             )}
           </View>
 
-          {/* Bottom Section - Shop Now Button */}
+          {/* Bottom Section - Shop Now / View Profile Button */}
           <TouchableOpacity
             className="bg-orange-500 rounded-lg py-2.5 mt-2 items-center justify-center"
             activeOpacity={0.8}
             onPress={handlePress}
           >
-            <Text className="text-white text-sm font-bold">Shop Now</Text>
+            <Text className="text-white text-sm font-bold">
+              {isShowcaseOnly ? "View Profile" : "Shop Now"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
