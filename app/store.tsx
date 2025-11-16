@@ -493,7 +493,10 @@ export default function StorePage() {
           </ScrollView>
         )}
 
-        <ScrollView className="w-[80%] px-1 py-2">
+        <ScrollView
+          className="w-[80%] px-1 py-2"
+          contentContainerStyle={{ paddingBottom: 350 }}
+        >
           {isLoading ? (
             <View className="flex-1 items-center justify-center py-20">
               <ActivityIndicator size="large" color="#F97316" />
