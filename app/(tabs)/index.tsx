@@ -12,8 +12,15 @@ import {
   DistanceResult,
 } from "@/utils/distanceUtils";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useToast } from "react-native-toast-notifications";
 
 interface AttributeValueProps {
@@ -59,6 +66,7 @@ export default function Index() {
   const [distanceMap, setDistanceMap] = useState<Map<string, DistanceResult>>(
     new Map()
   );
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -134,6 +142,27 @@ export default function Index() {
     console.log("Vendor pressed:", vendor.id);
   };
 
+  const handleCategoryPress = (category: string, index: number) => {
+    setSelectedCategory(category === "All" ? null : category);
+
+    // Calculate position to center the selected category
+    const ITEM_WIDTH = 64; // size-16 = 64px
+    const GAP = 12;
+    const PADDING = 16;
+    const screenWidth = Dimensions.get("window").width;
+    const totalItemWidth = ITEM_WIDTH + GAP;
+
+    // Calculate scroll position to center the item
+    const itemPosition = index * totalItemWidth + PADDING;
+    const centerOffset = screenWidth / 2 - ITEM_WIDTH / 2;
+    const scrollX = itemPosition - centerOffset;
+
+    scrollViewRef.current?.scrollTo({
+      x: scrollX,
+      animated: true,
+    });
+  };
+
   return (
     <View className="flex-1 bg-gray-50">
       <HomeHeader />
@@ -149,12 +178,15 @@ export default function Index() {
       {categories.length > 0 && (
         <View className="bg-white border-b border-gray-100">
           <ScrollView
+            ref={scrollViewRef}
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="px-4 py-2"
-            contentContainerStyle={{ gap: 12 }}
+            snapToInterval={76}
+            decelerationRate="fast"
+            className="py-2"
+            contentContainerStyle={{ gap: 12, paddingHorizontal: 16 }}
           >
-            {categories.map((category) => {
+            {categories.map((category, index) => {
               const isSelected =
                 (category === "All" && !selectedCategory) ||
                 selectedCategory === category;
@@ -166,9 +198,7 @@ export default function Index() {
               return (
                 <TouchableOpacity
                   key={category}
-                  onPress={() =>
-                    setSelectedCategory(category === "All" ? null : category)
-                  }
+                  onPress={() => handleCategoryPress(category, index)}
                   className="items-center"
                 >
                   <View
