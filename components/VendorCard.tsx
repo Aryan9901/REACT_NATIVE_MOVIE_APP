@@ -52,14 +52,18 @@ export default function VendorCard({
     setSelectedVendor(vendor);
     setDeliveryLocation(location);
 
+    console.log("at time of naviagting = ", isShowcaseOnly);
+
     // Navigate to profile page for showcase-only vendors, otherwise to store
     if (isShowcaseOnly) {
+      console.log(1);
+
       router.push("/vendor/profile");
     } else {
+      console.log(2);
+
       router.push("/store");
     }
-
-    onPress?.();
   };
 
   const getVendorImage = () => {

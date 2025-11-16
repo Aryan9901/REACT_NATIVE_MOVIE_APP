@@ -51,12 +51,6 @@ export default function StorePage() {
   const categoryRefs = useRef<{ [key: string]: View | null }>({});
   const subCategoryRefs = useRef<{ [key: string]: View | null }>({});
 
-  // Check if vendor is showcase-only
-  const isShowcaseOnly =
-    selectedVendor?.attributeValues?.find(
-      (attr: any) => attr?.name === "isShowcaseOnly"
-    )?.value === "true";
-
   const [categories, setCategories] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState<any>(null);
   const [subCategories, setSubCategories] = useState<any[]>([]);
@@ -252,12 +246,6 @@ export default function StorePage() {
   useEffect(() => {
     if (!selectedVendor) {
       router.back();
-      return;
-    }
-
-    // Redirect to profile page if vendor is showcase-only
-    if (isShowcaseOnly) {
-      router.replace("/vendor/profile");
       return;
     }
 
