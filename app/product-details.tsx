@@ -24,7 +24,7 @@ const HEADER_MAX_HEIGHT = 400;
 
 export default function ProductDetailsPage() {
   const router = useRouter();
-  const { addToCart, updateCartQuantity, removeFromCart, cart } =
+  const { addToCart, updateCartQuantity, removeFromCart, cart }: any =
     useStoreStore();
 
   const [product, setProduct] = useState<any>(null);
@@ -98,7 +98,7 @@ export default function ProductDetailsPage() {
     : [];
 
   const cartItem = cart.find(
-    (item) =>
+    (item: any) =>
       item.productId === product.productId &&
       item.id === selectedVariant?.variantId
   );
