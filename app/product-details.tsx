@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Easing } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -33,6 +34,7 @@ export default function ProductDetailsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [confettiElements, setConfettiElements] = useState<any[]>([]);
 
   const variantScrollRef = useRef<ScrollView>(null);
   const imageScrollRef = useRef<ScrollView>(null);
@@ -157,6 +159,168 @@ export default function ProductDetailsPage() {
 
   const handleVariantChange = (index: number) => {
     setSelectedVariantIndex(index);
+
+    // Check if the new variant is already in cart
+    const newVariant = availableVariants[index];
+    const isInCart = cart.some(
+      (item: any) =>
+        item.productId === product.productId &&
+        item.variantId === newVariant?.variantId
+    );
+
+    if (!isInCart && newVariant) {
+      // Auto-add to cart with quantity 1
+      addToCart({
+        productId: product.productId,
+        name: product.productName,
+        price: newVariant.netPrice,
+        quantity: 1,
+        productImageUrls: productImages[0] || null,
+        variant: newVariant.variant,
+        variantId: newVariant.variantId,
+        unit: newVariant.unit,
+        mrp: newVariant.mrp,
+      });
+
+      // Generate confetti with celebration icons
+      const celebrationIcons = [
+        "sparkles",
+        "flash",
+        "star",
+        "trophy",
+        "rocket",
+        "gift",
+        "balloon",
+        "flame",
+        "thunderstorm",
+      ];
+
+      const elements = Array.from({ length: 60 }, (_, i) => {
+        const isIcon = i % 4 === 0; // Every 4th element is an icon
+        return {
+          id: `confetti-${Date.now()}-${i}`,
+          type: isIcon ? "icon" : "shape",
+          icon: isIcon ? celebrationIcons[i % celebrationIcons.length] : null,
+          x: new Animated.Value(SCREEN_WIDTH / 2),
+          y: new Animated.Value(SCREEN_HEIGHT / 2),
+          rotation: new Animated.Value(0),
+          scale: new Animated.Value(isIcon ? 0.3 : 1),
+          opacity: new Animated.Value(1),
+          color: [
+            "#F97316",
+            "#10B981",
+            "#3B82F6",
+            "#EF4444",
+            "#F59E0B",
+            "#8B5CF6",
+            "#EC4899",
+            "#14B8A6",
+            "#FBBF24",
+            "#A78BFA",
+          ][i % 10],
+          shape: isIcon ? null : ["circle", "square"][i % 2],
+        };
+      });
+
+      setConfettiElements(elements);
+
+      // Start animations immediately on next frame
+      requestAnimationFrame(() => {
+        // Animate confetti elements with smooth, consistent timing
+        elements.forEach((element, i) => {
+          // Create evenly distributed burst pattern
+          const angle = (Math.PI * 2 * i) / elements.length;
+          const distance = 200 + (i % 3) * 50; // Layered distances for depth
+          const endX = SCREEN_WIDTH / 2 + Math.cos(angle) * distance;
+          const endY = SCREEN_HEIGHT / 2 + Math.sin(angle) * distance;
+
+          // Consistent animation duration for smoothness
+          const duration = 1200;
+          const fadeDelay = 700;
+
+          if (element.type === "icon") {
+            // Icons: Scale up and burst out
+            Animated.parallel([
+              Animated.spring(element.scale, {
+                toValue: 1.2,
+                tension: 80,
+                friction: 8,
+                useNativeDriver: true,
+              }),
+              Animated.timing(element.x, {
+                toValue: endX,
+                duration: duration,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+              Animated.timing(element.y, {
+                toValue: endY,
+                duration: duration,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+              Animated.timing(element.rotation, {
+                toValue: (i % 2 === 0 ? 1 : -1) * 360,
+                duration: duration,
+                easing: Easing.linear,
+                useNativeDriver: true,
+              }),
+              Animated.sequence([
+                Animated.delay(fadeDelay),
+                Animated.timing(element.opacity, {
+                  toValue: 0,
+                  duration: 500,
+                  easing: Easing.ease,
+                  useNativeDriver: true,
+                }),
+              ]),
+            ]).start();
+          } else {
+            // Shapes: Burst and spin
+            Animated.parallel([
+              Animated.timing(element.x, {
+                toValue: endX,
+                duration: duration,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+              Animated.timing(element.y, {
+                toValue: endY,
+                duration: duration,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+              Animated.timing(element.rotation, {
+                toValue: (i % 2 === 0 ? 1 : -1) * 720,
+                duration: duration,
+                easing: Easing.linear,
+                useNativeDriver: true,
+              }),
+              Animated.timing(element.scale, {
+                toValue: 0.8,
+                duration: duration,
+                easing: Easing.ease,
+                useNativeDriver: true,
+              }),
+              Animated.sequence([
+                Animated.delay(fadeDelay),
+                Animated.timing(element.opacity, {
+                  toValue: 0,
+                  duration: 500,
+                  easing: Easing.ease,
+                  useNativeDriver: true,
+                }),
+              ]),
+            ]).start();
+          }
+        });
+      });
+
+      // Clear confetti after animation completes
+      setTimeout(() => {
+        setConfettiElements([]);
+      }, 1800);
+    }
   };
 
   // Parallax animations
@@ -602,6 +766,61 @@ export default function ProductDetailsPage() {
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
       </View>
+
+      {/* Confetti Celebration Animation */}
+      {confettiElements.map((element) => (
+        <Animated.View
+          key={element.id}
+          style={{
+            position: "absolute",
+            zIndex: 250,
+            transform: [
+              { translateX: element.x },
+              { translateY: element.y },
+              {
+                rotate: element.rotation.interpolate({
+                  inputRange: [-720, 720],
+                  outputRange: ["-720deg", "720deg"],
+                }),
+              },
+              { scale: element.scale },
+            ],
+            opacity: element.opacity,
+          }}
+        >
+          {element.type === "icon" ? (
+            <View
+              style={{
+                shadowColor: element.color,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.8,
+                shadowRadius: 8,
+                elevation: 10,
+              }}
+            >
+              <Ionicons
+                name={element.icon as any}
+                size={32}
+                color={element.color}
+              />
+            </View>
+          ) : (
+            <View
+              style={{
+                width: element.shape === "circle" ? 14 : 12,
+                height: element.shape === "circle" ? 14 : 12,
+                backgroundColor: element.color,
+                borderRadius: element.shape === "circle" ? 7 : 3,
+                shadowColor: element.color,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.6,
+                shadowRadius: 4,
+                elevation: 5,
+              }}
+            />
+          )}
+        </Animated.View>
+      ))}
 
       {/* Full Screen Image Viewer with Zoom */}
       <Modal
