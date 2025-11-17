@@ -2,10 +2,41 @@ import { API_URL, STORAGE_KEYS, USER_ROLES } from "@/lib/constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-export async function createAddress(addressData: any) {
+export async function updateAddress(addressData: any) {
   try {
     const sessionToken = await AsyncStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
     const userId = await AsyncStorage.getItem(STORAGE_KEYS.MOBILE);
+
+    const headers: any = {
+      "X-USER-ROLE": USER_ROLES.USER,
+      sessionToken: sessionToken,
+      "X-User-Id": userId,
+    };
+
+    const response = await axios.post(
+      `${API_URL.BASE_USER}/rest/big-local/api/v1/user/address`,
+      addressData,
+      { headers }
+    );
+
+    return {
+      success: true,
+      data: response?.data,
+      error: null,
+    };
+  } catch (error: any) {
+    console.error("Error updating address:", error);
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.message || "Failed to update address",
+    };
+  }
+}
+
+export async function createOrUpdateAddress(addressData: any, userId: string) {
+  try {
+    const sessionToken = await AsyncStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
 
     const headers: any = {
       "X-USER-ROLE": USER_ROLES.USER,
@@ -30,38 +61,6 @@ export async function createAddress(addressData: any) {
       success: false,
       data: null,
       error: error.response?.data?.message || "Failed to create address",
-    };
-  }
-}
-
-export async function updateAddress(addressId: string, addressData: any) {
-  try {
-    const sessionToken = await AsyncStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
-    const userId = await AsyncStorage.getItem(STORAGE_KEYS.MOBILE);
-
-    const headers: any = {
-      "X-USER-ROLE": USER_ROLES.USER,
-      sessionToken: sessionToken,
-      "X-User-Id": userId,
-    };
-
-    const response = await axios.put(
-      `${API_URL.BASE_USER}/rest/big-local/api/v1/user/address/${addressId}`,
-      addressData,
-      { headers }
-    );
-
-    return {
-      success: true,
-      data: response?.data,
-      error: null,
-    };
-  } catch (error: any) {
-    console.error("Error updating address:", error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || "Failed to update address",
     };
   }
 }

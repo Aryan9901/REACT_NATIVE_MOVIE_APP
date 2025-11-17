@@ -301,12 +301,11 @@ const EditAddress = () => {
       return;
     }
 
-    setSaving(true);
     try {
       const finalType =
         formData.type === "Other" ? customType.trim() : formData.type;
 
-      const addressData = {
+      let addressData: any = {
         addressLineOne: formData.addressLineOne,
         addressLineTwo: formData.addressLineTwo,
         city: formData.city,
@@ -319,12 +318,40 @@ const EditAddress = () => {
         contactNo: user?.mobileNo || "",
       };
 
-      let result;
       if (isEditing && addressId) {
-        result = await AddressService.updateAddress(addressId, addressData);
+        addressData = {
+          id: addressId,
+          addressLineOne: formData.addressLineOne,
+          addressLineTwo: formData.addressLineTwo,
+          city: formData.city,
+          state: formData.state,
+          country: "India",
+          pinCode: formData.pinCode,
+          type: finalType,
+          latitude: formData.latitude || 0,
+          longitude: formData.longitude || 0,
+          contactNo: user?.mobileNo || "",
+        };
       } else {
-        result = await AddressService.createAddress(addressData);
+        addressData = {
+          addressLineOne: formData.addressLineOne,
+          addressLineTwo: formData.addressLineTwo,
+          city: formData.city,
+          state: formData.state,
+          country: "India",
+          pinCode: formData.pinCode,
+          type: finalType,
+          latitude: formData.latitude || 0,
+          longitude: formData.longitude || 0,
+          contactNo: user?.mobileNo || "",
+        };
       }
+
+      setSaving(true);
+      const result = await AddressService.createOrUpdateAddress(
+        addressData,
+        user?.id as string
+      );
 
       if (result.success) {
         await refreshUser();
