@@ -106,7 +106,7 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="saved"
+        name="cart"
         options={{
           title: "Cart",
           tabBarIcon: ({ focused }) => (
