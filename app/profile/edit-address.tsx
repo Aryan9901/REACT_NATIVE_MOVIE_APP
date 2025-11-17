@@ -7,14 +7,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 // Helper function to extract address components (same as LocationPicker)
 const extractGoogleAddressComponents = (components: any[]): any => {
@@ -269,6 +268,9 @@ const EditAddress = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.addressLineOne.trim()) {
+      newErrors.addressLineOne = "Flat / House No. is required";
+    }
     if (!formData.addressLineTwo.trim()) {
       newErrors.addressLineTwo = "Address is required";
     }
@@ -379,15 +381,13 @@ const EditAddress = () => {
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-        style={{ position: "relative" }}
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        bottomOffset={40}
       >
-        <ScrollView
-          className="flex-1 px-3 py-2"
-          keyboardShouldPersistTaps="handled"
-        >
+        <View className="px-3 py-2">
           {/* Search Places */}
           <View className="bg-white rounded-xl px-4 py-2 mb-2 shadow-sm">
             <View className="flex-row items-center mb-3">
@@ -429,7 +429,7 @@ const EditAddress = () => {
                     <TouchableOpacity
                       key={prediction.place_id}
                       onPress={() => handlePlaceSelect(prediction.place_id)}
-                      className={`px-4 py-3.5 ${
+                      className={`px-4 py-2 ${
                         index !== predictions.length - 1
                           ? "border-b border-gray-100"
                           : ""
@@ -456,7 +456,7 @@ const EditAddress = () => {
             <TouchableOpacity
               onPress={handleGetCurrentLocation}
               disabled={gettingLocation}
-              className="py-3.5 px-4 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 flex-row items-center justify-center shadow-md"
+              className="py-3 px-4 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 flex-row items-center justify-center shadow-md"
               style={{
                 backgroundColor: gettingLocation ? "#fb923c" : "#ea580c",
                 elevation: 3,
@@ -544,21 +544,32 @@ const EditAddress = () => {
               </Text>
             </View>
 
-            <View className="mb-4">
+            <View className="mb-1.5">
               <Text className="text-sm font-semibold text-gray-700 mb-2">
-                Flat / House No. / Building
+                Flat / House No. / Building *
               </Text>
               <TextInput
                 value={formData.addressLineOne}
                 onChangeText={(value) => updateField("addressLineOne", value)}
                 placeholder="e.g., Flat 101, Building A"
-                className="border-2 border-gray-200 rounded-xl px-4 py-3.5 text-base text-gray-900 bg-gray-50"
+                className={`border-2 rounded-md px-4 py-2 text-base text-gray-900 ${
+                  errors.addressLineOne
+                    ? "border-red-500 bg-red-50"
+                    : "border-gray-200 bg-gray-50"
+                }`}
                 placeholderTextColor="#9ca3af"
               />
-              <Text className="text-xs text-gray-500 mt-1.5">Optional</Text>
+              {errors.addressLineOne && (
+                <View className="flex-row items-center mt-1.5">
+                  <Ionicons name="alert-circle" size={14} color="#ef4444" />
+                  <Text className="text-red-500 text-xs ml-1">
+                    {errors.addressLineOne}
+                  </Text>
+                </View>
+              )}
             </View>
 
-            <View className="mb-4">
+            <View className="mb-1.5">
               <Text className="text-sm font-semibold text-gray-700 mb-2">
                 Street / Area / Locality *
               </Text>
@@ -566,7 +577,7 @@ const EditAddress = () => {
                 value={formData.addressLineTwo}
                 onChangeText={(value) => updateField("addressLineTwo", value)}
                 placeholder="e.g., MG Road, Koramangala, Sector 5"
-                className={`border-2 rounded-xl px-4 py-3.5 text-base text-gray-900 ${
+                className={`border-2 rounded-md px-4 py-2 text-base text-gray-900 ${
                   errors.addressLineTwo
                     ? "border-red-500 bg-red-50"
                     : "border-gray-200 bg-gray-50"
@@ -586,7 +597,7 @@ const EditAddress = () => {
               )}
             </View>
 
-            <View className="flex-row gap-3 mb-4">
+            <View className="flex-row gap-3 mb-2">
               <View className="flex-1">
                 <Text className="text-sm font-semibold text-gray-700 mb-2">
                   City *
@@ -595,7 +606,7 @@ const EditAddress = () => {
                   value={formData.city}
                   onChangeText={(value) => updateField("city", value)}
                   placeholder="City"
-                  className={`border-2 rounded-xl px-4 py-3.5 text-base text-gray-900 ${
+                  className={`border-2 rounded-md px-4 py-2 text-base text-gray-900 ${
                     errors.city
                       ? "border-red-500 bg-red-50"
                       : "border-gray-200 bg-gray-50"
@@ -622,7 +633,7 @@ const EditAddress = () => {
                   placeholder="000000"
                   keyboardType="number-pad"
                   maxLength={6}
-                  className={`border-2 rounded-xl px-4 py-3.5 text-base text-gray-900 ${
+                  className={`border-2 rounded-md px-4 py-2 text-base text-gray-900 ${
                     errors.pinCode
                       ? "border-red-500 bg-red-50"
                       : "border-gray-200 bg-gray-50"
@@ -648,7 +659,7 @@ const EditAddress = () => {
                 value={formData.state}
                 onChangeText={(value) => updateField("state", value)}
                 placeholder="State"
-                className={`border-2 rounded-xl px-4 py-3.5 text-base text-gray-900 ${
+                className={`border-2 rounded-md px-4 py-2 text-base text-gray-900 ${
                   errors.state
                     ? "border-red-500 bg-red-50"
                     : "border-gray-200 bg-gray-50"
@@ -665,9 +676,8 @@ const EditAddress = () => {
               )}
             </View>
           </View>
-        </ScrollView>
-
-        <View className="bg-white border-t border-gray-200 px-4 py-4 shadow-lg">
+        </View>
+        <View className="bg-white border-t border-gray-200 px-4 pt-4 pb-4 shadow-lg mt-auto">
           <TouchableOpacity
             onPress={handleSave}
             disabled={saving}
@@ -696,7 +706,7 @@ const EditAddress = () => {
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };
