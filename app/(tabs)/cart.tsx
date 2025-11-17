@@ -14,15 +14,17 @@ export default function CartPage() {
     clearCart,
   } = useStoreStore();
 
-  const handleIncrement = (productId: string, currentQuantity: number) => {
-    updateCartQuantity(productId, currentQuantity + 1);
+  console.log(cart);
+
+  const handleIncrement = (variantId: string, currentQuantity: number) => {
+    updateCartQuantity(variantId, currentQuantity + 1);
   };
 
-  const handleDecrement = (productId: string, currentQuantity: number) => {
+  const handleDecrement = (variantId: string, currentQuantity: number) => {
     if (currentQuantity <= 1) {
-      removeFromCart(productId);
+      removeFromCart(variantId);
     } else {
-      updateCartQuantity(productId, currentQuantity - 1);
+      updateCartQuantity(variantId, currentQuantity - 1);
     }
   };
 
@@ -81,14 +83,14 @@ export default function CartPage() {
       <ScrollView className="flex-1 px-4 py-3">
         {cart.map((item) => (
           <View
-            key={item.productId}
+            key={item.variantId}
             className="bg-white rounded-lg mb-3 p-3 flex-row border border-gray-200"
           >
             {/* Product Image */}
             <View className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 mr-3">
-              {item.image ? (
+              {item.productImageUrls ? (
                 <Image
-                  source={{ uri: item.image }}
+                  source={{ uri: item.productImageUrls }}
                   className="w-full h-full"
                   resizeMode="cover"
                 />
@@ -116,7 +118,7 @@ export default function CartPage() {
                 <View className="flex-row items-center bg-orange-500 rounded-lg">
                   <TouchableOpacity
                     onPress={() =>
-                      handleDecrement(item.productId, item.quantity)
+                      handleDecrement(item.variantId, item.quantity)
                     }
                     className="w-8 h-8 items-center justify-center"
                     activeOpacity={0.7}
@@ -128,7 +130,7 @@ export default function CartPage() {
                   </Text>
                   <TouchableOpacity
                     onPress={() =>
-                      handleIncrement(item.productId, item.quantity)
+                      handleIncrement(item.variantId, item.quantity)
                     }
                     className="w-8 h-8 items-center justify-center"
                     activeOpacity={0.7}
@@ -145,7 +147,7 @@ export default function CartPage() {
 
             {/* Remove Button */}
             <TouchableOpacity
-              onPress={() => removeFromCart(item.productId)}
+              onPress={() => removeFromCart(item.variantId)}
               className="ml-2"
             >
               <Ionicons name="trash-outline" size={20} color="#EF4444" />

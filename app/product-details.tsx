@@ -100,7 +100,7 @@ export default function ProductDetailsPage() {
   const cartItem = cart.find(
     (item: any) =>
       item.productId === product.productId &&
-      item.id === selectedVariant?.variantId
+      item.variantId === selectedVariant?.variantId
   );
   const quantity = cartItem?.quantity || 0;
 
@@ -119,24 +119,30 @@ export default function ProductDetailsPage() {
   const handleAddToCart = () => {
     if (!selectedVariant) return;
     addToCart({
-      id: selectedVariant.variantId,
       productId: product.productId,
       name: product.productName,
       price: selectedVariant.netPrice,
       quantity: 1,
-      image: productImages[0] || null,
+      productImageUrls: productImages[0] || null,
+      variant: selectedVariant.variant,
+      variantId: selectedVariant.variantId,
+      unit: selectedVariant.unit,
+      mrp: selectedVariant.mrp,
     });
   };
 
   const handleIncrement = () => {
     if (!selectedVariant) return;
     addToCart({
-      id: selectedVariant.variantId,
       productId: product.productId,
       name: product.productName,
       price: selectedVariant.netPrice,
-      quantity: 1,
-      image: productImages[0] || null,
+      quantity: quantity + 1,
+      productImageUrls: productImages[0] || null,
+      variant: selectedVariant.variant,
+      variantId: selectedVariant.variantId,
+      unit: selectedVariant.unit,
+      mrp: selectedVariant.mrp,
     });
   };
 

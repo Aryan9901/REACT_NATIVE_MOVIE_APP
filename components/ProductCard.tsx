@@ -130,17 +130,15 @@ export default function ProductCard({
     setIsAdding(true);
     try {
       addToCart({
-        id: selectedVariant.variantId,
         productId: product.productId,
         name: product.productName,
         price: selectedVariant.netPrice,
         quantity: 1,
-        image: displayImage,
+        productImageUrls: displayImage,
         variant: selectedVariant.variant,
         variantId: selectedVariant.variantId,
         unit: selectedVariant.unit,
         mrp: selectedVariant.mrp,
-        netPrice: selectedVariant.netPrice,
       });
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -155,17 +153,15 @@ export default function ProductCard({
     setIsAdding(true);
     try {
       await addToCart({
-        id: selectedVariant.variantId,
         productId: product.productId,
         name: product.productName,
         price: selectedVariant.netPrice,
         quantity: quantityInCart + 1,
-        image: displayImage,
+        productImageUrls: displayImage,
         variant: selectedVariant.variant,
         variantId: selectedVariant.variantId,
         unit: selectedVariant.unit,
         mrp: selectedVariant.mrp,
-        netPrice: selectedVariant.netPrice,
       });
     } catch (error) {
       console.error("Error incrementing:", error);
@@ -442,17 +438,15 @@ export default function ProductCard({
                   const handleModalAdd = (e: any) => {
                     e.stopPropagation();
                     addToCart({
-                      id: variant.variantId,
                       productId: product.productId,
                       name: product.productName,
                       price: variant.netPrice,
                       quantity: 1,
-                      image: findMatchingImageUrl(variant.variant),
+                      productImageUrls: findMatchingImageUrl(variant.variant),
                       variant: variant.variant,
                       variantId: variant.variantId,
                       unit: variant.unit,
                       mrp: variant.mrp,
-                      netPrice: variant.netPrice,
                     });
                     if (!isSelected) {
                       setSelectedVariantIndex(index);
@@ -464,17 +458,15 @@ export default function ProductCard({
                     e.stopPropagation();
                     if (variantQuantity >= 9) return;
                     addToCart({
-                      id: variant.variantId,
                       productId: product.productId,
                       name: product.productName,
                       price: variant.netPrice,
                       quantity: variantQuantity + 1,
-                      image: findMatchingImageUrl(variant.variant),
+                      productImageUrls: findMatchingImageUrl(variant.variant),
                       variant: variant.variant,
                       variantId: variant.variantId,
                       unit: variant.unit,
                       mrp: variant.mrp,
-                      netPrice: variant.netPrice,
                     });
                   };
 

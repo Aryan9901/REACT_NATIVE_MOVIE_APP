@@ -26,17 +26,15 @@ interface Vendor {
 }
 
 interface CartItem {
-  id: string;
   productId: string;
   variantId: string;
   name: string;
   price: number;
   quantity: number;
-  image?: string;
+  productImageUrls?: string;
   variant?: string;
   unit?: string;
   mrp?: number;
-  netPrice?: number;
 }
 
 interface DeliveryLocation {
