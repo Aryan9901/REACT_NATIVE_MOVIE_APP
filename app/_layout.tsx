@@ -1,4 +1,5 @@
 import AuthModal from "@/components/AuthModal";
+import Header from "@/components/Header";
 import StoreInitializer from "@/components/StoreInitializer";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -38,6 +39,14 @@ export default function RootLayout() {
             <Stack.Screen
               name="return-policy"
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="profile/addresses"
+              options={{ header: () => <Header /> }}
+            />
+            <Stack.Screen
+              name="profile/edit-address"
+              options={{ header: () => <Header /> }}
             />
             <Stack.Screen
               name="profile/edit"
