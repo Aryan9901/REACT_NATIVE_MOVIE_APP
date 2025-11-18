@@ -5,33 +5,33 @@ import { Tabs } from "expo-router";
 import { Image, Text, View } from "react-native";
 
 import Header from "@/components/Header";
+import { useStoreStore } from "@/stores";
 
-function TabIcon({ focused, icon, title, isIconComponent }: any) {
-  if (focused) {
-    return (
-      <View className="size-full flex gap-1 justify-center items-center mt-4 min-w-20 rounded-full">
+function TabIcon({ focused, icon, title, isIconComponent, badge }: any) {
+  return (
+    <View className="h-96 min-w-24 flex gap-1 justify-center items-center">
+      <View className="relative">
         {isIconComponent ? (
           icon
         ) : (
-          <Image source={icon} tintColor="#f77b05" className="size-6" />
+          <Image
+            source={icon}
+            tintColor={focused ? "#f77b05" : "#a9a9b9"}
+            className="size-6"
+          />
         )}
-        <Text className="text-[#f77b05] text-base w-fit font-semibold">
-          {title}
-        </Text>
+        {badge !== undefined && badge > 0 && (
+          <View className="absolute -top-1 -right-2 bg-orange-600 rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
+            <Text className="text-white text-[10px] font-bold">
+              {badge > 99 ? "99+" : badge}
+            </Text>
+          </View>
+        )}
       </View>
-    );
-  }
-
-  return (
-    <View className="size-full flex gap-1 justify-center items-center mt-4 min-w-20 rounded-full">
-      {isIconComponent ? (
-        icon
-      ) : (
-        <Image source={icon} tintColor="#a9a9b9" className="size-6" />
-      )}
       <Text
-        style={{ color: "#a9a9b9" }}
-        className="text-[#a9a9b9] text-base w-fit font-semibold"
+        className={`text-base font-semibold ${
+          focused ? "text-[#f77b05]" : "text-[#a9a9b9]"
+        }`}
       >
         {title}
       </Text>
@@ -40,20 +40,25 @@ function TabIcon({ focused, icon, title, isIconComponent }: any) {
 }
 
 export default function TabsLayout() {
+  const { cartItemCount } = useStoreStore();
+
   return (
     <Tabs
       screenOptions={{
         tabBarShowLabel: false,
         tabBarItemStyle: {
-          width: "100%",
-          height: "100%",
+          flex: 1,
+          height: 64,
+          width: 100,
+          paddingTop: 12,
           justifyContent: "center",
           alignItems: "center",
         },
         tabBarStyle: {
           backgroundColor: "#fff",
-          paddingTop: 2,
+          paddingTop: 0,
           height: 64,
+          width: "100%",
           overflow: "hidden",
           borderColor: "#0F0D23",
         },
@@ -121,6 +126,7 @@ export default function TabsLayout() {
               }
               isIconComponent={true}
               title="Cart"
+              badge={cartItemCount}
             />
           ),
         }}

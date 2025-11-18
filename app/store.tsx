@@ -1,3 +1,4 @@
+import BottomTabBar from "@/components/BottomTabBar";
 import FilterModal from "@/components/FilterModal";
 import Header from "@/components/Header";
 import { getSubCategoryIcon } from "@/constants/categoryIcons";
@@ -338,7 +339,7 @@ export default function StorePage() {
   }
 
   return (
-    <View className=" bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       <Header />
       <View className="bg-white border-b border-gray-200 pt-2 pb-3 px-4">
         {categories.length > 0 && (
@@ -495,7 +496,7 @@ export default function StorePage() {
 
         <ScrollView
           className="w-[80%] px-1 py-2"
-          contentContainerStyle={{ paddingBottom: 350 }}
+          contentContainerStyle={{ paddingBottom: 80 }}
         >
           {isLoading ? (
             <View className="flex-1 items-center justify-center py-20">
@@ -527,6 +528,7 @@ export default function StorePage() {
               ))}
             </View>
           )}
+          <View className="h-44"></View>
         </ScrollView>
       </View>
 
@@ -538,6 +540,8 @@ export default function StorePage() {
         onFilterChange={handleFilterChange}
         onClearAll={clearAllFilters}
       />
+
+      <BottomTabBar />
     </View>
   );
 }
