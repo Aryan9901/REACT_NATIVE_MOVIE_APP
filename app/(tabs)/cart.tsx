@@ -608,8 +608,6 @@ export default function CartPage() {
       return;
     }
 
-    console.log(selectedAddress);
-
     if (deliveryOption === "Home Delivery" && !selectedAddress?.id) {
       setIsAddressModalOpen(true);
       return;
