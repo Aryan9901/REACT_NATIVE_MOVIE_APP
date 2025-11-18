@@ -3,6 +3,7 @@ import CalendarPicker from "@/components/cart/CalendarPicker";
 import CollectionSlots from "@/components/cart/CollectionSlots";
 import DeliveryOptions from "@/components/cart/DeliveryOptions";
 import DeliverySlots from "@/components/cart/DeliverySlots";
+import OrderConfirmationModal from "@/components/cart/OrderConfirmationModal";
 import PaymentMethod from "@/components/cart/PaymentMethod";
 import ShopTimings from "@/components/cart/ShopTimings";
 import SlotSelectionWarningModal from "@/components/cart/SlotSelectionWarningModal";
@@ -67,6 +68,7 @@ export default function CartPage() {
     clearCart,
   } = useStoreStore();
   const { user } = useAuthStore();
+  const { isAuthenticated, setShowAuthModal } = useAuthStore();
 
   const [vendorData, setVendorData] = useState<any>(null);
   const [deliveryOption, setDeliveryOption] = useState<string>("Home Delivery");
@@ -96,6 +98,9 @@ export default function CartPage() {
   const [showVendorChangeModal, setShowVendorChangeModal] =
     useState<boolean>(false);
   const [pendingAddress, setPendingAddress] = useState<any>(null);
+  const [showOrderConfirmation, setShowOrderConfirmation] =
+    useState<boolean>(false);
+  const [orderConfirmationData, setOrderConfirmationData] = useState<any>(null);
 
   const handleIncrement = (variantId: string, currentQuantity: number) => {
     if (currentQuantity >= 9) return;
@@ -552,6 +557,12 @@ export default function CartPage() {
   ]);
 
   const handlePlaceOrder = async () => {
+    // Check if user is authenticated
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     const isCombinedPickup =
       deliveryOption === "Self Pickup" && hasServiceCollection;
     const isMembership = deliveryInfo.type === "membership";
@@ -597,21 +608,15 @@ export default function CartPage() {
       return;
     }
 
-    if (deliveryOption === "Home Delivery" && !selectedAddress) {
-      Alert.alert(
-        "Address Required",
-        "Please select a delivery address to continue.",
-        [{ text: "Select Address", onPress: () => setIsAddressModalOpen(true) }]
-      );
+    console.log(selectedAddress);
+
+    if (deliveryOption === "Home Delivery" && !selectedAddress?.id) {
+      setIsAddressModalOpen(true);
       return;
     }
 
     try {
-      setIsPlacingOrder(true);
-      const sessionToken = await AsyncStorage.getItem(
-        STORAGE_KEYS.SESSION_TOKEN
-      );
-      const userId = await AsyncStorage.getItem(STORAGE_KEYS.MOBILE);
+      const userId = user?.id;
 
       let deliveryTime = "";
       let collectionTime = "";
@@ -632,6 +637,20 @@ export default function CartPage() {
         }
       }
 
+      const cartItems = cart?.map((item) => {
+        return {
+          productId: item?.productId,
+          productName: item?.name,
+          productImageUrls: [item?.productImageUrls],
+          quantity: item?.quantity,
+          variant: item?.variant,
+          variantId: item?.variantId,
+          unit: item?.unit,
+          mrp: item?.mrp,
+          netPrice: item?.price,
+        };
+      });
+
       const orderPayload = {
         mrp: totalMrp,
         discount: totalSavings,
@@ -642,7 +661,7 @@ export default function CartPage() {
             ? String(formatAddress(selectedAddress) || "")
             : String(vendorData?.address || ""),
         note: notes || "",
-        items: cart,
+        items: cartItems,
         attributeModels: [
           {
             name: "Delivery Charge",
@@ -669,7 +688,12 @@ export default function CartPage() {
         ],
       };
 
-      await axios.post(
+      setIsPlacingOrder(true);
+      const sessionToken = await AsyncStorage.getItem(
+        STORAGE_KEYS.SESSION_TOKEN
+      );
+
+      const response = await axios.post(
         `${API_URL.BASE_ORDER}/rest/big-local/api/v1/order?addressId=${
           selectedAddress?.id || ""
         }`,
@@ -684,13 +708,31 @@ export default function CartPage() {
         }
       );
 
-      clearCart();
-      Alert.alert("Success", "Order placed successfully!", [
-        { text: "View Orders", onPress: () => router.push("/orders") },
-      ]);
-    } catch (error) {
+      // Show order confirmation modal first
+      setOrderConfirmationData({
+        orderId: response.data?.id || response.data?.orderId || "N/A",
+        total: `₹${grandTotal.toFixed(2)}`,
+        estimatedDelivery: deliveryTime || "As per schedule",
+        vendorName: vendorData?.shopName || vendorData?.name || "Vendor",
+        vendorContact: vendorData?.contactNo || "",
+        vendorAlternateContact: vendorData?.alternateContactNo || "",
+        paymentStatus:
+          paymentMethod === PAYMENT_MODE.PREPAID ? "Paid" : "Pay on Delivery",
+      });
+      setIsPlacingOrder(false);
+      setShowOrderConfirmation(true);
+    } catch (error: any) {
       console.error("Error placing order:", error);
-      Alert.alert("Error", "Failed to place order. Please try again.");
+      console.error("Error response:", error?.response?.data);
+      console.error("Error status:", error?.response?.status);
+
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Failed to place order. Please try again.";
+
+      Alert.alert("Error", errorMessage);
     } finally {
       setIsPlacingOrder(false);
     }
@@ -732,8 +774,6 @@ export default function CartPage() {
         newAddress.longitude,
         user
       );
-
-      console.log(result);
 
       if (!result) {
         Alert.alert("Error", "Failed to check vendor availability");
@@ -1005,7 +1045,9 @@ export default function CartPage() {
             <ActivityIndicator color="#fff" size="small" />
           ) : (
             <Text className="text-white font-bold text-base">
-              Place Order • ₹{grandTotal.toFixed(2)}
+              {!isAuthenticated
+                ? "Sign In to Place Order"
+                : `Place Order • ₹${grandTotal.toFixed(2)}`}
             </Text>
           )}
         </TouchableOpacity>
@@ -1060,6 +1102,36 @@ export default function CartPage() {
         }}
         vendorName={vendorData?.shopName || vendorData?.name || "This vendor"}
       />
+
+      {/* Order Confirmation Modal */}
+      {showOrderConfirmation && (
+        <OrderConfirmationModal
+          isOpen={showOrderConfirmation}
+          onClose={() => {
+            clearCart();
+            setShowOrderConfirmation(false);
+            router.push("/store");
+          }}
+          orderId={orderConfirmationData.orderId}
+          total={orderConfirmationData.total}
+          estimatedDelivery={orderConfirmationData.estimatedDelivery}
+          vendorName={orderConfirmationData.vendorName}
+          vendorContact={orderConfirmationData.vendorContact}
+          paymentStatus={orderConfirmationData.paymentStatus}
+          onContinueShopping={() => {
+            setShowOrderConfirmation(false);
+            setOrderConfirmationData(null);
+            clearCart();
+            router.push("/store");
+          }}
+          onViewOrder={(orderId) => {
+            setShowOrderConfirmation(false);
+            setOrderConfirmationData(null);
+            clearCart();
+            router.push("/store");
+          }}
+        />
+      )}
     </View>
   );
 }

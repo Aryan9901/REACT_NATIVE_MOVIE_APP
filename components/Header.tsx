@@ -9,13 +9,13 @@ interface HeaderProps {
   page?: string;
 }
 
-function Header({ page }: HeaderProps) {
+function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { refreshUser, isAuthenticated, setShowAuthModal } = useAuthStore();
   const { selectedVendor } = useStoreStore();
 
-  const vendor = selectedVendor;
+  const vendor: any = selectedVendor;
   const isGuestMode = !isAuthenticated;
 
   const isStorePage = pathname === "/store";

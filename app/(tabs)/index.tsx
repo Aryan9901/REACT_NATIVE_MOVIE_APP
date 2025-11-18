@@ -131,9 +131,7 @@ export default function Index() {
       }
     };
 
-    if (user?.id) {
-      fetchVendors();
-    }
+    fetchVendors();
   }, [location, user]);
 
   const handleFilteredResults = (filtered: Vendor[]) => {

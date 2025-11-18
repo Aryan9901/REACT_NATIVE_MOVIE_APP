@@ -291,7 +291,7 @@ export default function ProductCard({
         {/* Product Info */}
         <View className="p-2">
           <Text
-            className="text-xs font-semibold text-gray-900 mb-1 leading-tight"
+            className="text-sm font-semibold text-gray-900 mb-2 leading-tight"
             numberOfLines={2}
           >
             {product.productName}
@@ -321,7 +321,7 @@ export default function ProductCard({
           </View>
 
           {/* Price */}
-          <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center justify-between mb-1">
             <View className="flex-row items-center flex-wrap">
               <Text className="text-sm font-bold text-gray-900">
                 ₹{selectedVariant?.netPrice}
@@ -344,7 +344,7 @@ export default function ProductCard({
                     handleAddToCart();
                   }}
                   disabled={isAdding}
-                  className="bg-orange-100 w-16 h-9 ml-auto border border-orange-600 rounded-full items-center justify-center"
+                  className="bg-orange-100 w-16 h-7 ml-auto border border-orange-600 rounded-full items-center justify-center"
                 >
                   {isAdding ? (
                     <ActivityIndicator size="small" color="#ea580c" />
@@ -355,7 +355,7 @@ export default function ProductCard({
                   )}
                 </TouchableOpacity>
               ) : (
-                <View className="flex-row w-24 h-9 ml-auto items-center justify-between bg-orange-100 border border-orange-600 rounded-full px-1">
+                <View className="flex-row w-24 h-7 ml-auto items-center justify-between bg-orange-100 border border-orange-600 rounded-full px-1">
                   <TouchableOpacity
                     onPress={(e) => {
                       e.stopPropagation();
@@ -541,7 +541,7 @@ export default function ProductCard({
                           {variantQuantity === 0 ? (
                             <TouchableOpacity
                               onPress={handleModalAdd}
-                              className="bg-orange-100 w-16 h-9 border border-orange-600 rounded-full items-center justify-center"
+                              className="bg-orange-100 w-16 h-6 py-0 border border-orange-600 rounded-full items-center justify-center"
                               activeOpacity={0.7}
                             >
                               <Text className="text-orange-600 text-xs font-bold">

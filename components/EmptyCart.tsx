@@ -6,7 +6,7 @@ import { Text, TouchableOpacity, View } from "react-native";
 const EmptyCart = () => {
   return (
     <View className="flex-1 bg-white">
-      <View className="bg-white border-b border-gray-200 pt-12 pb-4 px-4">
+      <View className="bg-white border-b border-gray-200 pt-2 pb-4 px-4">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#000" />
