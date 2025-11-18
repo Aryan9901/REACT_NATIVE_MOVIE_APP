@@ -33,11 +33,7 @@ interface VendorCardProps {
   onPress?: () => void;
 }
 
-export default function VendorCard({
-  vendor,
-  distance,
-  onPress,
-}: VendorCardProps) {
+export default function VendorCard({ vendor, distance }: VendorCardProps) {
   const router = useRouter();
   const { setSelectedVendor, setDeliveryLocation } = useStoreStore();
   const { location }: any = useLocationStore();
@@ -51,17 +47,9 @@ export default function VendorCard({
   const handlePress = () => {
     setSelectedVendor(vendor);
     setDeliveryLocation(location);
-
-    console.log("at time of naviagting = ", isShowcaseOnly);
-
-    // Navigate to profile page for showcase-only vendors, otherwise to store
     if (isShowcaseOnly) {
-      console.log(1);
-
       router.push("/vendor/profile");
     } else {
-      console.log(2);
-
       router.push("/store");
     }
   };

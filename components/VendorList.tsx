@@ -51,7 +51,6 @@ export default function VendorList({
   isLocationTurnedOff,
   selectedCategory,
   onEnableLocation,
-  onVendorPress,
 }: VendorListProps) {
   if (isLocationTurnedOff) {
     return (
@@ -109,11 +108,7 @@ export default function VendorList({
     <FlatList
       data={vendors}
       renderItem={({ item }) => (
-        <VendorCard
-          vendor={item}
-          distance={distanceMap.get(item.id)}
-          onPress={() => onVendorPress?.(item)}
-        />
+        <VendorCard vendor={item} distance={distanceMap.get(item.id)} />
       )}
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ padding: 8 }}

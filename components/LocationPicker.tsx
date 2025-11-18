@@ -215,7 +215,7 @@ export default function LocationModal({
           {!isPermissionDenied && (
             <TouchableOpacity
               style={styles.currentLocationButton}
-              onPress={() => getLiveLocation(true, onClose)}
+              onPress={() => getLiveLocation(true, onClose, false, user?.id)}
               disabled={loadingLocation}
             >
               {loadingLocation ? (

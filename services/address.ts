@@ -170,6 +170,7 @@ export async function fetchNearbyAddress(
 
     // Check if user is in guest mode
     const guestMode = await AsyncStorage.getItem(STORAGE_KEYS.GUEST_MODE);
+
     const isGuest = guestMode === "true";
     if (isGuest) {
       return {

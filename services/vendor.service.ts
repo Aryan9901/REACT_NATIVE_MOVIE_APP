@@ -10,11 +10,7 @@ export async function fetchNearbyVendors(
   try {
     if (Number(latitude) === 0 && Number(longitude) === 0) {
       console.warn("Location not available, cannot fetch vendors");
-      return {
-        success: false,
-        data: [],
-        error: "Location not available",
-      };
+      return null;
     }
 
     // Check if user is in guest mode

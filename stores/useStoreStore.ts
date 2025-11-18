@@ -111,17 +111,31 @@ export const useStoreStore = create<StoreState>((set, get) => ({
   setSelectedVendor: async (vendor) => {
     try {
       const currentVendor = get().selectedVendor;
+      const deliveryLocation = get().deliveryLocation;
 
       if (vendor) {
+        // Include delivery location in vendor data
+        const vendorWithLocation = {
+          ...vendor,
+          deliveryLocation: deliveryLocation
+            ? {
+                address: deliveryLocation,
+                formatted_address: deliveryLocation.address,
+                lat: deliveryLocation.latitude,
+                long: deliveryLocation.longitude,
+              }
+            : null,
+        };
+
         await AsyncStorage.setItem(
           STORAGE_KEYS.SELECTED_VENDOR,
-          JSON.stringify(vendor)
+          JSON.stringify(vendorWithLocation)
         );
+        set({ selectedVendor: vendorWithLocation });
       } else {
         await AsyncStorage.removeItem(STORAGE_KEYS.SELECTED_VENDOR);
+        set({ selectedVendor: vendor });
       }
-
-      set({ selectedVendor: vendor });
 
       // Clear cart when vendor changes
       if (vendor?.id !== currentVendor?.id) {

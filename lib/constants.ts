@@ -24,6 +24,11 @@ export const STORAGE_KEYS = {
   SAVED_CART: "@savedCart",
 };
 
+export const PAYMENT_MODE = {
+  PAY_ON_DELIVERY: "Pay On Delivery",
+  PREPAID: "Prepaid",
+};
+
 export const ORDER_STATUS = {
   PENDING: "Pending",
   ACCEPTED: "Accepted",

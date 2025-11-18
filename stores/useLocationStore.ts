@@ -251,6 +251,34 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 
       const { latitude, longitude } = position.coords;
 
+      const isNearbyAddress = await fetchNearbyAddress(
+        latitude,
+        longitude,
+        userId,
+        null
+      );
+
+      let nearbyAddress;
+
+      if (isNearbyAddress?.success && isNearbyAddress?.data?.id) {
+        nearbyAddress = {
+          formatted_address: formatAddress(isNearbyAddress?.data),
+          latitude: isNearbyAddress?.data?.latitude,
+          longitude: isNearbyAddress?.data?.longitude,
+          addressLineOne: isNearbyAddress?.data?.addressLineOne,
+          addressLineTwo: isNearbyAddress?.data?.addressLineTwo,
+          city: isNearbyAddress?.data?.city,
+          state: isNearbyAddress?.data?.state,
+          pinCode: isNearbyAddress?.data?.pinCode,
+          country: isNearbyAddress?.data?.country,
+          type: isNearbyAddress?.data?.type,
+          id: isNearbyAddress?.data?.id,
+        };
+        await handleConfirm(nearbyAddress);
+        if (isModal && func) func();
+        return true;
+      }
+
       // Use Google Geocoding API
       const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
       const response = await fetch(
@@ -295,33 +323,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         formatted_address: address.formatted_address,
       };
 
-      const isNearbyAddress = await fetchNearbyAddress(
-        latitude,
-        longitude,
-        userId,
-        null
-      );
-
-      let nearbyAddress;
-
-      if (isNearbyAddress?.success && isNearbyAddress?.data?.id) {
-        nearbyAddress = {
-          formatted_address: formatAddress(isNearbyAddress?.data),
-          latitude: isNearbyAddress?.data?.latitude,
-          longitude: isNearbyAddress?.data?.longitude,
-          addressLineOne: isNearbyAddress?.data?.addressLineOne,
-          addressLineTwo: isNearbyAddress?.data?.addressLineTwo,
-          city: isNearbyAddress?.data?.city,
-          state: isNearbyAddress?.data?.state,
-          pinCode: isNearbyAddress?.data?.pinCode,
-          country: isNearbyAddress?.data?.country,
-          type: isNearbyAddress?.data?.type,
-          id: isNearbyAddress?.data?.id,
-        };
-        await handleConfirm(nearbyAddress);
-      } else {
-        await handleConfirm(locationData);
-      }
+      await handleConfirm(locationData);
 
       if (isModal && func) func();
       return true;

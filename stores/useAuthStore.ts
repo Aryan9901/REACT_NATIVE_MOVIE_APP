@@ -125,6 +125,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error("Failed to get user data");
       }
 
+      await AsyncStorage.removeItem(STORAGE_KEYS.GUEST_MODE);
+
       set({ user: userData, isAuthenticated: true, showAuthModal: false });
     } catch (error: any) {
       console.error("Failed to verify OTP:", error);

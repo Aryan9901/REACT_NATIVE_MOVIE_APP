@@ -131,15 +131,13 @@ export default function Index() {
       }
     };
 
-    fetchVendors();
-  }, [location]);
+    if (user?.id) {
+      fetchVendors();
+    }
+  }, [location, user]);
 
   const handleFilteredResults = (filtered: Vendor[]) => {
     setFilteredVendors(filtered);
-  };
-
-  const handleVendorSelect = (vendor: Vendor) => {
-    console.log("Vendor pressed:", vendor.id);
   };
 
   const handleCategoryPress = (category: string, index: number) => {
@@ -246,7 +244,6 @@ export default function Index() {
         onEnableLocation={() =>
           getLiveLocation(false, null, true, user?.id, toast)
         }
-        onVendorPress={handleVendorSelect}
       />
     </View>
   );
