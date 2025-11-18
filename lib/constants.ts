@@ -87,3 +87,24 @@ export const getStatusBadge = (status: string) => {
     }
   );
 };
+
+export const RAZORPAY_CONFIG = {
+  KEY_ID: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID,
+  SCRIPT_URL: "https://checkout.razorpay.com/v1/checkout.js",
+};
+
+export const ORDER_ATTRIBUTE_KEYS = {
+  DELIVERY_CHARGE: "Delivery Charge",
+  DELIVERY_METHOD: "Delivery Method",
+  DELIVERY_TIME: "Delivery Time",
+  ORDER_DATE: "Order Date",
+  DELIVERED_ON: "Delivered On",
+  PAID_ON: "Paid On",
+  RESCHEDULED_ON: "Rescheduled On",
+  APPROVED_ON: "Approved On",
+  OUT_FOR_DELIVERY_ON: "Out For Delivery On",
+  CANCELLED_ON: "Cancelled On",
+  IS_SERVICE: "Is Service",
+  SUBSCRIBED_ON: "Subscribed On",
+  PAYMENT_METHOD: "Payment Method",
+};

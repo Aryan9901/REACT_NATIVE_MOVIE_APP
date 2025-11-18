@@ -13,7 +13,9 @@ import EmptyCart from "@/components/EmptyCart";
 import OrderSummary from "@/components/OrderSummary";
 import {
   API_URL,
+  ORDER_ATTRIBUTE_KEYS,
   PAYMENT_MODE,
+  RAZORPAY_CONFIG,
   STORAGE_KEYS,
   USER_ROLES,
 } from "@/lib/constants";
@@ -41,6 +43,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import RazorpayCheckout from "react-native-razorpay";
 
 interface VendorConfig {
   minimumOrder?: string;
@@ -686,6 +689,11 @@ export default function CartPage() {
         ],
       };
 
+      if (paymentMethod === PAYMENT_MODE.PREPAID) {
+        await handleRazorpayPayment(orderPayload, selectedAddress);
+        return;
+      }
+
       setIsPlacingOrder(true);
       const sessionToken = await AsyncStorage.getItem(
         STORAGE_KEYS.SESSION_TOKEN
@@ -732,6 +740,141 @@ export default function CartPage() {
 
       Alert.alert("Error", errorMessage);
     } finally {
+      setIsPlacingOrder(false);
+    }
+  };
+
+  const handleRazorpayPayment = async (
+    orderPayload: any,
+    deliveryAddress: any
+  ) => {
+    try {
+      const sessionToken = await AsyncStorage.getItem(
+        STORAGE_KEYS.SESSION_TOKEN
+      );
+
+      const orderResponse = await axios.post(
+        `${API_URL.BASE_ORDER}/rest/big-local/api/v1/payment/order`,
+        {
+          amount: grandTotal,
+          currency: "INR",
+          orderPayload,
+          userId: user?.id,
+          vendorId: vendorData?.vendorId,
+          addressId: deliveryAddress?.id || selectedAddress?.id || "",
+        },
+        {
+          headers: {
+            sessionToken: sessionToken || "",
+            "X-USER-ROLE": USER_ROLES.USER,
+          },
+        }
+      );
+
+      const { id: razorpayOrderId, amount, currency } = orderResponse.data;
+
+      // Check if RazorpayCheckout is available
+      if (!RazorpayCheckout || typeof RazorpayCheckout.open !== "function") {
+        Alert.alert(
+          "Payment Unavailable",
+          "Razorpay payment gateway is not available. Please try Pay on Delivery option or restart the app."
+        );
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      const options = {
+        description: "Order Payment",
+        image: vendorData?.profileImage || "/images/biglocallogo3.webp",
+        currency: currency,
+        key: RAZORPAY_CONFIG.KEY_ID || "",
+        amount: amount,
+        name: vendorData?.shopName || "BigLocal",
+        order_id: razorpayOrderId,
+        prefill: {
+          name: user?.name || "",
+          email: user?.emailId || "",
+          contact: user?.mobileNo || "",
+        },
+        theme: {
+          color: "#F77C06",
+        },
+        notes: {
+          address: deliveryAddress
+            ? formatAddress(deliveryAddress)
+            : vendorData.address,
+        },
+
+        modal: {
+          ondismiss: function () {
+            setIsPlacingOrder(false);
+          },
+        },
+      };
+
+      RazorpayCheckout.open(options as any)
+        .then(async (data: any) => {
+          try {
+            // Verify payment on backend
+            setIsPlacingOrder(true);
+            const sessionToken = await AsyncStorage.getItem(
+              STORAGE_KEYS.SESSION_TOKEN
+            );
+
+            const verifyResponse = await axios.post(
+              `${API_URL.BASE_ORDER}/rest/big-local/api/v1/payment/verify`,
+              {
+                orderId: data.razorpay_order_id,
+                paymentId: data.razorpay_payment_id,
+                signature: data.razorpay_signature,
+              },
+              {
+                headers: {
+                  sessionToken: sessionToken || "",
+                  "X-USER-ROLE": USER_ROLES.USER,
+                },
+              }
+            );
+
+            if (verifyResponse.data) {
+              setIsPlacingOrder(false);
+
+              setOrderConfirmationData({
+                orderId: data.data?.id || data.data?.orderId || "N/A",
+                total: `₹${grandTotal.toFixed(2)}`,
+                estimatedDelivery:
+                  orderPayload.attributeModels.find(
+                    (attr: any) =>
+                      attr.name === ORDER_ATTRIBUTE_KEYS.DELIVERY_TIME
+                  )?.value || "",
+                vendorName:
+                  vendorData?.shopName || vendorData?.name || "Vendor",
+                vendorContact: vendorData?.contactNo || "",
+                vendorAlternateContact: vendorData?.alternateContactNo || "",
+                paymentStatus:
+                  paymentMethod === PAYMENT_MODE.PREPAID
+                    ? "Paid"
+                    : "Pay on Delivery",
+              });
+              setIsPlacingOrder(false);
+              setShowOrderConfirmation(true);
+              clearCart();
+              // router.push("/store");
+            }
+          } catch (error) {
+            console.error("Payment verification error:", error);
+          } finally {
+            setIsPlacingOrder(false);
+          }
+        })
+        .catch((error: any) => {
+          alert(`Error: ${error.code} | ${error.description}`);
+          console.error("Payment failed:", error);
+          setIsPlacingOrder(false);
+        });
+    } catch (error) {
+      console.error("Razorpay payment error:", error);
+      Alert.alert("Error", "Failed to initiate payment. Please try again.");
       setIsPlacingOrder(false);
     }
   };
