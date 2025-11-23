@@ -7,7 +7,11 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ToastProvider } from "react-native-toast-notifications";
 import "./globals.css";
-require("../ReactotronConfig");
+
+// Only load Reactotron in development
+if (__DEV__) {
+  require("../ReactotronConfig");
+}
 
 export default function RootLayout() {
   return (
@@ -20,11 +24,7 @@ export default function RootLayout() {
       >
         <KeyboardProvider>
           <StoreInitializer />
-          <StatusBar
-            style="dark"
-            translucent={false}
-            backgroundColor="#030014"
-          />
+          <StatusBar style="dark" translucent={true} backgroundColor="#fff" />
           <Stack>
             {/* <Stack.Screen name="index" options={{ headerShown: false }} /> */}
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

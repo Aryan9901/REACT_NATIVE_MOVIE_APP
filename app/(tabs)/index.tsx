@@ -68,6 +68,31 @@ export default function Index() {
   );
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const handleFilteredResults = (filtered: Vendor[]) => {
+    setFilteredVendors(filtered);
+  };
+
+  const handleCategoryPress = (category: string, index: number) => {
+    setSelectedCategory(category === "All" ? null : category);
+
+    // Calculate position to center the selected category
+    const ITEM_WIDTH = 64; // size-16 = 64px
+    const GAP = 12;
+    const PADDING = 16;
+    const screenWidth = Dimensions.get("window").width;
+    const totalItemWidth = ITEM_WIDTH + GAP;
+
+    // Calculate scroll position to center the item
+    const itemPosition = index * totalItemWidth + PADDING;
+    const centerOffset = screenWidth / 2 - ITEM_WIDTH / 2;
+    const scrollX = itemPosition - centerOffset;
+
+    scrollViewRef.current?.scrollTo({
+      x: scrollX,
+      animated: true,
+    });
+  };
+
   useEffect(() => {
     const fetchVendors = async () => {
       if (!location || !location?.latitude || !location?.longitude) {
@@ -90,7 +115,11 @@ export default function Index() {
             const allCategories = new Set<string>();
             response.forEach((vendor: Vendor) => {
               vendor.vendorCategories?.forEach((cat: any) => {
-                allCategories.add(cat.name);
+                // Trim category names to remove trailing/leading spaces
+                const categoryName = cat.name?.trim();
+                if (categoryName) {
+                  allCategories.add(categoryName);
+                }
               });
             });
             setCategories(["All", ...Array.from(allCategories)]);
@@ -134,31 +163,6 @@ export default function Index() {
     fetchVendors();
   }, [location, user]);
 
-  const handleFilteredResults = (filtered: Vendor[]) => {
-    setFilteredVendors(filtered);
-  };
-
-  const handleCategoryPress = (category: string, index: number) => {
-    setSelectedCategory(category === "All" ? null : category);
-
-    // Calculate position to center the selected category
-    const ITEM_WIDTH = 64; // size-16 = 64px
-    const GAP = 12;
-    const PADDING = 16;
-    const screenWidth = Dimensions.get("window").width;
-    const totalItemWidth = ITEM_WIDTH + GAP;
-
-    // Calculate scroll position to center the item
-    const itemPosition = index * totalItemWidth + PADDING;
-    const centerOffset = screenWidth / 2 - ITEM_WIDTH / 2;
-    const scrollX = itemPosition - centerOffset;
-
-    scrollViewRef.current?.scrollTo({
-      x: scrollX,
-      animated: true,
-    });
-  };
-
   return (
     <View className="flex-1 bg-gray-50">
       <HomeHeader />
@@ -189,6 +193,7 @@ export default function Index() {
 
               // Get category icon from constants
               const categoryIcon = getCategoryIcon(category);
+
               const fallbackIcon = getFallbackIconName(category);
 
               return (
