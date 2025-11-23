@@ -29,6 +29,11 @@ import {
   getCurrentHour,
 } from "@/utils/dateUtils";
 import { formatAddress } from "@/utils/locationUtils";
+import {
+  buildCollectionTimeString,
+  buildDeliveryTimeString,
+  buildOrderPayload,
+} from "@/utils/orderUtils";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
@@ -73,8 +78,8 @@ export default function CartPage() {
     updateCartQuantity,
     clearCart,
   } = useStoreStore();
-  const { user } = useAuthStore();
-  const { isAuthenticated, setShowAuthModal } = useAuthStore();
+  const { user, isAuthenticated, setShowAuthModal, showAuthModal } =
+    useAuthStore();
 
   const [vendorData, setVendorData] = useState<any>(null);
   const [deliveryOption, setDeliveryOption] = useState<string>("Home Delivery");
@@ -110,6 +115,7 @@ export default function CartPage() {
   const [tableNo, setTableNo] = useState<number | undefined>(undefined);
   const [isTableRequired, setIsTableRequired] = useState<boolean>(false);
   const [showTableNoError, setShowTableNoError] = useState<boolean>(false);
+  const [pendingOrderPayload, setPendingOrderPayload] = useState<any>(null);
 
   const handleIncrement = (variantId: string, currentQuantity: number) => {
     if (currentQuantity >= 9) return;
@@ -577,12 +583,6 @@ export default function CartPage() {
   ]);
 
   const handlePlaceOrder = async () => {
-    // Check if user is authenticated
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-
     const isCombinedPickup =
       deliveryOption === "Self Pickup" && hasServiceCollection;
     const isMembership = deliveryInfo.type === "membership";
@@ -644,92 +644,111 @@ export default function CartPage() {
       return;
     }
 
+    // Check if user is authenticated first
+    if (!user?.id) {
+      // For Home Delivery: Skip address check, authenticate first
+      // For Self Pickup: Build and save order payload
+      if (deliveryOption === "Self Pickup") {
+        // Build delivery and collection time strings
+        let deliveryTime = "";
+        let collectionTime = "";
+
+        if (!isMembership) {
+          deliveryTime = buildDeliveryTimeString(
+            deliveryInfo,
+            selectedSlot,
+            selectedDate
+          );
+
+          if (hasServiceCollection && selectedCollectionSlot) {
+            collectionTime = buildCollectionTimeString(
+              selectedCollectionSlot,
+              selectedCollectionDate
+            );
+          }
+        }
+
+        // Build order payload for Self Pickup
+        const orderPayload = buildOrderPayload({
+          totalMrp,
+          totalSavings,
+          grandTotal,
+          vendorData,
+          deliveryAddress: null,
+          notes,
+          cart,
+          deliveryMethod: deliveryOption,
+          deliveryCharge,
+          deliveryTime,
+          hasServiceCollection,
+          collectionTime,
+          paymentMethod,
+          tableNo,
+          isMembership,
+        });
+
+        setPendingOrderPayload(orderPayload);
+      } else {
+        // Home Delivery: Don't save payload, user will place order after auth
+        setPendingOrderPayload(null);
+      }
+      setShowAuthModal(true);
+      return;
+    }
+
+    // User is authenticated
+    // For Home Delivery: Check if address is selected
     if (deliveryOption === "Home Delivery" && !selectedAddress?.id) {
       setIsAddressModalOpen(true);
       return;
     }
 
+    // Build delivery and collection time strings
+    let deliveryTime = "";
+    let collectionTime = "";
+
+    if (!isMembership) {
+      deliveryTime = buildDeliveryTimeString(
+        deliveryInfo,
+        selectedSlot,
+        selectedDate
+      );
+
+      if (hasServiceCollection && selectedCollectionSlot) {
+        collectionTime = buildCollectionTimeString(
+          selectedCollectionSlot,
+          selectedCollectionDate
+        );
+      }
+    }
+
+    // Build order payload
+    const orderPayload = buildOrderPayload({
+      totalMrp,
+      totalSavings,
+      grandTotal,
+      vendorData,
+      deliveryAddress:
+        deliveryOption === "Home Delivery" ? selectedAddress : null,
+      notes,
+      cart,
+      deliveryMethod: deliveryOption,
+      deliveryCharge,
+      deliveryTime,
+      hasServiceCollection,
+      collectionTime,
+      paymentMethod,
+      tableNo,
+      isMembership,
+    });
+
+    // User is authenticated, proceed with order placement
+    await placeOrderWithPayload(orderPayload);
+  };
+
+  const placeOrderWithPayload = async (orderPayload: any) => {
     try {
       const userId = user?.id;
-
-      let deliveryTime = "";
-      let collectionTime = "";
-
-      if (!isMembership) {
-        if (deliveryInfo.type === "days" || deliveryInfo.type === "hour") {
-          deliveryTime = deliveryInfo.standard.displayMessage;
-        } else if (selectedSlot) {
-          deliveryTime = `Between ${selectedSlot} on ${formatFullDate(
-            selectedDate
-          )}`;
-        }
-
-        if (hasServiceCollection && selectedCollectionSlot) {
-          collectionTime = `${selectedCollectionSlot} on ${formatFullDate(
-            selectedCollectionDate
-          )}`;
-        }
-      }
-
-      const cartItems = cart?.map((item) => {
-        return {
-          productId: item?.productId,
-          productName: item?.name,
-          productImageUrls: [item?.productImageUrls],
-          quantity: item?.quantity,
-          variant: item?.variant,
-          variantId: item?.variantId,
-          unit: item?.unit,
-          mrp: item?.mrp,
-          netPrice: item?.price,
-        };
-      });
-
-      const orderPayload = {
-        mrp: totalMrp,
-        discount: totalSavings,
-        total: grandTotal,
-        contactNo: vendorData?.contactNo || "",
-        deliveryAddress:
-          deliveryOption === "Home Delivery"
-            ? String(formatAddress(selectedAddress) || "")
-            : String(vendorData?.address || ""),
-        note: notes || "",
-        items: cartItems,
-        attributeModels: [
-          {
-            name: "Delivery Charge",
-            value: isMembership ? "0" : deliveryCharge.toString(),
-          },
-          { name: "Delivery Method", value: deliveryOption },
-          { name: "Delivery Time", value: deliveryTime },
-          { name: "Order Date", value: new Date().toISOString() },
-          { name: "Payment Method", value: paymentMethod },
-          { name: "Delivered On", value: "" },
-          {
-            name: "IS_SERVICE",
-            value: hasServiceCollection ? "true" : "false",
-          },
-          { name: "Subscribed On", value: "" },
-          { name: "Rescheduled On", value: "" },
-          { name: "Approved On", value: "" },
-          { name: "Out For Delivery On", value: "" },
-          {
-            name: "Paid On",
-            value:
-              paymentMethod === PAYMENT_MODE.PREPAID
-                ? new Date().toISOString()
-                : "",
-          },
-          { name: "Cancelled On", value: "" },
-          ...(collectionTime
-            ? [{ name: "Service Pickup Time", value: collectionTime }]
-            : []),
-          ...(deliveryOption === "Self Pickup" && tableNo
-            ? [{ name: "Table Number", value: tableNo.toString() }]
-            : []),
-        ],
-      };
 
       if (paymentMethod === PAYMENT_MODE.PREPAID) {
         await handleRazorpayPayment(orderPayload, selectedAddress);
@@ -756,11 +775,17 @@ export default function CartPage() {
         }
       );
 
-      // Show order confirmation modal first
+      // Get delivery time from order payload
+      const deliveryTime =
+        orderPayload.attributeModels.find(
+          (attr: any) => attr.name === ORDER_ATTRIBUTE_KEYS.DELIVERY_TIME
+        )?.value || "As per schedule";
+
+      // Show order confirmation modal
       setOrderConfirmationData({
         orderId: response.data?.id || response.data?.orderId || "N/A",
         total: `₹${grandTotal.toFixed(2)}`,
-        estimatedDelivery: deliveryTime || "As per schedule",
+        estimatedDelivery: deliveryTime,
         vendorName: vendorData?.shopName || vendorData?.name || "Vendor",
         vendorContact: vendorData?.contactNo || "",
         vendorAlternateContact: vendorData?.alternateContactNo || "",
@@ -769,6 +794,7 @@ export default function CartPage() {
       });
       setIsPlacingOrder(false);
       setShowOrderConfirmation(true);
+      // Don't clear cart here - let user see confirmation first
     } catch (error: any) {
       console.error("Error placing order:", error);
       console.error("Error response:", error?.response?.data);
@@ -786,6 +812,18 @@ export default function CartPage() {
     }
   };
 
+  // Watch for authentication changes and place order if pending
+  useEffect(() => {
+    const placeOrderAfterAuth = async () => {
+      if (user && pendingOrderPayload) {
+        await placeOrderWithPayload(pendingOrderPayload);
+        setPendingOrderPayload(null);
+      }
+    };
+
+    placeOrderAfterAuth();
+  }, [user, pendingOrderPayload]);
+
   const handleRazorpayPayment = async (
     orderPayload: any,
     deliveryAddress: any
@@ -802,7 +840,7 @@ export default function CartPage() {
           currency: "INR",
           orderPayload,
           userId: user?.id,
-          vendorId: vendorData?.vendorId,
+          vendorId: vendorData?.id,
           addressId: deliveryAddress?.id || selectedAddress?.id || "",
         },
         {
@@ -882,7 +920,10 @@ export default function CartPage() {
               setIsPlacingOrder(false);
 
               setOrderConfirmationData({
-                orderId: data.data?.id || data.data?.orderId || "N/A",
+                orderId:
+                  verifyResponse.data?.id ||
+                  verifyResponse.data?.orderId ||
+                  "N/A",
                 total: `₹${grandTotal.toFixed(2)}`,
                 estimatedDelivery:
                   orderPayload.attributeModels.find(
@@ -893,15 +934,11 @@ export default function CartPage() {
                   vendorData?.shopName || vendorData?.name || "Vendor",
                 vendorContact: vendorData?.contactNo || "",
                 vendorAlternateContact: vendorData?.alternateContactNo || "",
-                paymentStatus:
-                  paymentMethod === PAYMENT_MODE.PREPAID
-                    ? "Paid"
-                    : "Pay on Delivery",
+                paymentStatus: "Paid",
               });
               setIsPlacingOrder(false);
               setShowOrderConfirmation(true);
-              clearCart();
-              // router.push("/store");
+              // Don't clear cart or navigate here - let user see confirmation first
             }
           } catch (error) {
             console.error("Payment verification error:", error);
@@ -1334,9 +1371,10 @@ export default function CartPage() {
         <OrderConfirmationModal
           isOpen={showOrderConfirmation}
           onClose={() => {
+            // User closes modal - clear cart and stay on cart page
             clearCart();
             setShowOrderConfirmation(false);
-            router.push("/store");
+            setOrderConfirmationData(null);
           }}
           orderId={orderConfirmationData.orderId}
           total={orderConfirmationData.total}
@@ -1345,15 +1383,17 @@ export default function CartPage() {
           vendorContact={orderConfirmationData.vendorContact}
           paymentStatus={orderConfirmationData.paymentStatus}
           onContinueShopping={() => {
+            // User clicks "Continue Shopping" - clear cart and go to store
+            clearCart();
             setShowOrderConfirmation(false);
             setOrderConfirmationData(null);
-            clearCart();
             router.push("/store");
           }}
           onViewOrder={(orderId) => {
+            // User clicks "View Order" - clear cart and go to store (or order details)
+            clearCart();
             setShowOrderConfirmation(false);
             setOrderConfirmationData(null);
-            clearCart();
             router.push("/store");
           }}
         />

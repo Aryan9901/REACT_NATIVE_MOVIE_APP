@@ -10,7 +10,6 @@ import {
   Dimensions,
   Image,
   Modal,
-  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -31,10 +30,65 @@ export default function ProductDetailsPage() {
   const [product, setProduct] = useState<any>(null);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [manuallySelectedImage, setManuallySelectedImage] = useState<
+    string | null
+  >(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [confettiElements, setConfettiElements] = useState<any[]>([]);
+
+  // Extract variant name from image URL (last part before extension)
+  const extractVariantFromImageUrl = (imageUrl: string): string => {
+    try {
+      // Handle both encoded (%2F) and regular (/) paths
+      const parts = imageUrl.split(/[/%]2F/);
+      const lastPart = parts[parts.length - 1];
+      // Remove file extension and any query parameters
+      const variantName = lastPart.split(/[.?]/)[0];
+      // Replace + with space (URL encoding) and normalize
+      return variantName.replace(/\+/g, " ").toLowerCase().trim();
+    } catch {
+      return "";
+    }
+  };
+
+  // Find matching image URL for a variant
+  const findMatchingImageUrl = (variantName: string): string | null => {
+    if (!variantName || !productImages.length) {
+      return productImages[0] || null;
+    }
+
+    const normalizedVariant = variantName
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "");
+
+    // Try exact match first
+    let matchingImage = productImages.find((imageUrl: string) => {
+      const imageVariant = extractVariantFromImageUrl(imageUrl).replace(
+        /\s+/g,
+        ""
+      );
+      return imageVariant === normalizedVariant;
+    });
+
+    // If no exact match, try partial match
+    if (!matchingImage) {
+      matchingImage = productImages.find((imageUrl: string) => {
+        const imageVariant = extractVariantFromImageUrl(imageUrl).replace(
+          /\s+/g,
+          ""
+        );
+        return (
+          imageVariant.includes(normalizedVariant) ||
+          normalizedVariant.includes(imageVariant)
+        );
+      });
+    }
+
+    return matchingImage || productImages[0] || null;
+  };
 
   const variantScrollRef = useRef<ScrollView>(null);
   const imageScrollRef = useRef<ScrollView>(null);
@@ -99,6 +153,19 @@ export default function ProductDetailsPage() {
     ? [product.productImageUrls]
     : [];
 
+  // Get the image that matches the selected variant
+  const variantMatchedImage = selectedVariant?.variant
+    ? findMatchingImageUrl(selectedVariant.variant)
+    : productImages[0] || null;
+
+  // Use manually selected image if available, otherwise use variant-matched image
+  const displayImage = manuallySelectedImage || variantMatchedImage;
+
+  // Get display image index for thumbnail selection
+  const displayImageIndex = displayImage
+    ? productImages.indexOf(displayImage)
+    : 0;
+
   const cartItem = cart.find(
     (item: any) =>
       item.productId === product.productId &&
@@ -125,7 +192,7 @@ export default function ProductDetailsPage() {
       name: product.productName,
       price: selectedVariant.netPrice,
       quantity: 1,
-      productImageUrls: productImages[0] || null,
+      productImageUrls: displayImage,
       variant: selectedVariant.variant,
       variantId: selectedVariant.variantId,
       unit: selectedVariant.unit,
@@ -140,7 +207,7 @@ export default function ProductDetailsPage() {
       name: product.productName,
       price: selectedVariant.netPrice,
       quantity: quantity + 1,
-      productImageUrls: productImages[0] || null,
+      productImageUrls: displayImage,
       variant: selectedVariant.variant,
       variantId: selectedVariant.variantId,
       unit: selectedVariant.unit,
@@ -159,6 +226,8 @@ export default function ProductDetailsPage() {
 
   const handleVariantChange = (index: number) => {
     setSelectedVariantIndex(index);
+    // Reset manually selected image when variant changes
+    setManuallySelectedImage(null);
 
     // Check if the new variant is already in cart
     const newVariant = availableVariants[index];
@@ -170,12 +239,13 @@ export default function ProductDetailsPage() {
 
     if (!isInCart && newVariant) {
       // Auto-add to cart with quantity 1
+      const variantImage = findMatchingImageUrl(newVariant.variant);
       addToCart({
         productId: product.productId,
         name: product.productName,
         price: newVariant.netPrice,
         quantity: 1,
-        productImageUrls: productImages[0] || null,
+        productImageUrls: variantImage,
         variant: newVariant.variant,
         variantId: newVariant.variantId,
         unit: newVariant.unit,
@@ -344,7 +414,7 @@ export default function ProductDetailsPage() {
 
   return (
     <View className="flex-1 bg-white">
-      {/* Fixed Parallax Background Image */}
+      {/* Fixed Parallax Background Image - PURELY VISUAL NOW */}
       <Animated.View
         style={{
           position: "absolute",
@@ -357,9 +427,9 @@ export default function ProductDetailsPage() {
           zIndex: 0,
         }}
       >
-        {productImages.length > 0 ? (
+        {displayImage ? (
           <Image
-            source={{ uri: productImages[selectedImageIndex] }}
+            source={{ uri: displayImage }}
             style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
           />
@@ -368,6 +438,8 @@ export default function ProductDetailsPage() {
             <Ionicons name="image-outline" size={80} color="#9CA3AF" />
           </View>
         )}
+
+        {/* Keep the badge purely visual here */}
         {savings && (
           <View className="absolute bottom-4 left-4 bg-red-500 rounded-full px-3 py-1">
             <Text className="text-white text-xs font-bold">
@@ -377,23 +449,6 @@ export default function ProductDetailsPage() {
         )}
       </Animated.View>
 
-      {/* Invisible Touch Layer for Image */}
-      <Pressable
-        onPress={() => {
-          if (productImages.length > 0) {
-            setIsModalOpen(true);
-          }
-        }}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: HEADER_MAX_HEIGHT,
-          zIndex: 5,
-        }}
-      />
-
       <Animated.ScrollView
         className="flex-1"
         scrollEventThrottle={16}
@@ -402,10 +457,24 @@ export default function ProductDetailsPage() {
           { useNativeDriver: true }
         )}
         contentContainerStyle={{
-          paddingTop: HEADER_MAX_HEIGHT,
+          // paddingTop: HEADER_MAX_HEIGHT,
           paddingBottom: 40,
         }}
       >
+        {/* THIS IS THE NEW INVISIBLE CLICK AREA */}
+        <TouchableOpacity
+          style={{ height: HEADER_MAX_HEIGHT, width: "100%" }}
+          activeOpacity={1} // Keep at 1 so background doesn't flicker on press
+          onPress={() => {
+            if (displayImage) {
+              const index = productImages.indexOf(displayImage);
+              if (index !== -1) {
+                setSelectedImageIndex(index);
+              }
+              setIsModalOpen(true);
+            }
+          }}
+        />
         {/* Content Container with White Background */}
         <View
           className="bg-white shadow-lg"
@@ -418,30 +487,43 @@ export default function ProductDetailsPage() {
         >
           {/* Image Thumbnails */}
           {productImages.length > 1 && (
-            <ScrollView
-              ref={imageScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="px-4 pt-4 border-b border-gray-100"
-            >
-              {productImages.map((image: string, index: number) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setSelectedImageIndex(index)}
-                  className={`mr-2 w-16 h-20 rounded-lg overflow-hidden border-2 ${
-                    selectedImageIndex === index
-                      ? "border-orange-500"
-                      : "border-gray-200"
-                  }`}
-                >
-                  <Image
-                    source={{ uri: image }}
-                    className="w-16 h-20"
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <View className="px-4 pt-4 border-b border-gray-100">
+              <Text className="text-sm font-semibold text-gray-700 mb-2">
+                Product Images
+              </Text>
+              <ScrollView
+                ref={imageScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+              >
+                {productImages.map((image: string, index: number) => {
+                  const isDisplayImage = image === displayImage;
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => {
+                        setSelectedImageIndex(index);
+                        setManuallySelectedImage(image);
+                      }}
+                      className={`mr-2 w-16 h-20 rounded-lg overflow-hidden border-2 ${
+                        isDisplayImage ? "border-orange-500" : "border-gray-200"
+                      }`}
+                    >
+                      <Image
+                        source={{ uri: image }}
+                        className="w-16 h-20"
+                        resizeMode="contain"
+                      />
+                      {isDisplayImage && (
+                        <View className="absolute top-1 right-1 bg-orange-500 rounded-full p-0.5">
+                          <Ionicons name="checkmark" size={10} color="#fff" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
           )}
 
           {/* Product Info */}

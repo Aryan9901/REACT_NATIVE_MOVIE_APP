@@ -53,7 +53,8 @@ export default function ProductCard({
       const lastPart = parts[parts.length - 1];
       // Remove file extension and any query parameters
       const variantName = lastPart.split(/[.?]/)[0];
-      return variantName.toLowerCase().trim();
+      // Replace + with space (URL encoding) and normalize
+      return variantName.replace(/\+/g, " ").toLowerCase().trim();
     } catch {
       return "";
     }
@@ -291,7 +292,7 @@ export default function ProductCard({
         {/* Product Info */}
         <View className="p-2">
           <Text
-            className="text-sm font-semibold text-gray-900 mb-2 leading-tight"
+            className="text-sm font-semibold line-clamp-1 text-gray-900 mb-2 leading-tight"
             numberOfLines={2}
           >
             {product.productName}
