@@ -5,14 +5,19 @@ interface DeliveryOptionsProps {
   deliveryOption: string;
   onDeliveryOptionChange: (option: string) => void;
   showOptions: boolean;
+  vendorConfig?: any;
 }
 
 const DeliveryOptions = ({
   deliveryOption,
   onDeliveryOptionChange,
   showOptions,
+  vendorConfig,
 }: DeliveryOptionsProps) => {
   if (!showOptions) return null;
+
+  const deliveryLabel = vendorConfig?.deliveryLabel || "Home Delivery";
+  const pickupLabel = vendorConfig?.pickupLabel || "Self Pickup";
 
   return (
     <View className="bg-white rounded-lg mb-1 px-3 pt-2 pb-4">
@@ -49,7 +54,7 @@ const DeliveryOptions = ({
                 : "text-gray-700 font-medium"
             } `}
           >
-            Home Delivery
+            {deliveryLabel}
           </Text>
         </TouchableOpacity>
 
@@ -82,7 +87,7 @@ const DeliveryOptions = ({
                 : "text-gray-700 font-medium"
             } `}
           >
-            Self Pickup
+            {pickupLabel}
           </Text>
         </TouchableOpacity>
       </View>

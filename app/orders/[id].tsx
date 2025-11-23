@@ -1,5 +1,5 @@
 import Header from "@/components/Header";
-import { getStatusBadge } from "@/lib/constants";
+import { getStatusBadge, ORDER_ATTRIBUTE_KEYS } from "@/lib/constants";
 import * as OrderService from "@/services/order";
 import {
   AntDesign,
@@ -193,7 +193,7 @@ const OrderTracking = ({ order }: any) => {
   const trackingSteps = buildTrackingSteps();
 
   return (
-    <View className="bg-white rounded-xl border border-gray-200 py-4 px-2 mb-4">
+    <View className="bg-white rounded-xl border border-gray-200 py-4 px-2 mb-2">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View className="flex-row w-full items-start" style={{ minWidth: 180 }}>
           {trackingSteps.map((step, index) => {
@@ -790,6 +790,8 @@ export default function OrderDetailsPage() {
   const deliveryTime = getAttributeValue("Delivery Time");
   const deliveryMethod = getAttributeValue("Delivery Method");
 
+  const isDineIn = getAttributeValue(ORDER_ATTRIBUTE_KEYS.TABLE_NUMBER);
+
   return (
     <View className="flex-1 bg-gray-50">
       <Header />
@@ -815,6 +817,21 @@ export default function OrderDetailsPage() {
             </View>
 
             <View className="space-y-2">
+              <View className="flex items-center justify-between flex-row">
+                {isDineIn && (
+                  <View className="bg-orange-50 px-3 py-1.5 rounded-full self-start mb-2">
+                    <Text className="text-sm font-semibold text-orange-600">
+                      🪑 Table No {isDineIn}
+                    </Text>
+                  </View>
+                )}
+                <View className="flex-row items-center gap-2 mb-2">
+                  <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+                  <Text className="text-sm text-gray-600">
+                    {orderDate ? new Date(orderDate).toDateString() : "N/A"}
+                  </Text>
+                </View>
+              </View>
               {order.vendorShopName && (
                 <View className="bg-orange-50 px-3 py-1.5 rounded-full self-start mb-2">
                   <Text className="text-xs font-medium text-orange-600">
@@ -822,66 +839,6 @@ export default function OrderDetailsPage() {
                   </Text>
                 </View>
               )}
-
-              <View className="flex-row items-center gap-2 mb-2">
-                <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-                <Text className="text-sm text-gray-600">
-                  {orderDate ? new Date(orderDate).toDateString() : "N/A"}
-                </Text>
-              </View>
-
-              {order.status === "Rescheduled" &&
-                getAttributeValue("Rescheduled On") && (
-                  <View className="bg-purple-50 px-3 py-2 rounded-lg mb-2">
-                    <View className="flex-row items-center gap-2 mb-1">
-                      <MaterialCommunityIcons
-                        name="calendar-clock"
-                        size={16}
-                        color="#9333ea"
-                      />
-                      <Text className="text-xs font-semibold text-purple-700">
-                        Order Rescheduled
-                      </Text>
-                    </View>
-                    <Text className="text-xs text-purple-600">
-                      Rescheduled on{" "}
-                      {new Date(
-                        getAttributeValue("Rescheduled On")
-                      ).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}{" "}
-                      at{" "}
-                      {new Date(
-                        getAttributeValue("Rescheduled On")
-                      ).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
-                    </Text>
-                    {getAttributeValue("Approved On") && (
-                      <Text className="text-xs text-purple-500 mt-1">
-                        Previously accepted on{" "}
-                        {new Date(
-                          getAttributeValue("Approved On")
-                        ).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}{" "}
-                        at{" "}
-                        {new Date(
-                          getAttributeValue("Approved On")
-                        ).toLocaleTimeString("en-US", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        })}
-                      </Text>
-                    )}
-                  </View>
-                )}
 
               {order.vendorContactNo && (
                 <TouchableOpacity
@@ -900,7 +857,7 @@ export default function OrderDetailsPage() {
                 </TouchableOpacity>
               )}
 
-              {deliveryTime && (
+              {deliveryTime && !isDineIn && (
                 <View className="flex-row items-center gap-2 mb-2">
                   <MaterialCommunityIcons
                     name="truck-delivery"
@@ -911,7 +868,7 @@ export default function OrderDetailsPage() {
                 </View>
               )}
 
-              {order.deliveryAddress && (
+              {!isDineIn && order.deliveryAddress && (
                 <TouchableOpacity
                   onPress={() => setIsMapModalOpen(true)}
                   className="flex-row items-start gap-2 bg-gray-50 p-3 rounded-lg"
@@ -1055,20 +1012,22 @@ export default function OrderDetailsPage() {
                 </View>
               </View>
 
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-base text-gray-600">
-                  Delivery Charges
-                </Text>
-                <View className="flex-row items-center gap-1">
-                  <FontAwesome5 name="rupee-sign" size={14} color="#4b5563" />
-                  <Text className="text-base font-medium text-gray-900">
-                    {deliveryCharges}
+              {!isDineIn && (
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-base text-gray-600">
+                    Delivery Charges
                   </Text>
+                  <View className="flex-row items-center gap-1">
+                    <FontAwesome5 name="rupee-sign" size={14} color="#4b5563" />
+                    <Text className="text-base font-medium text-gray-900">
+                      {deliveryCharges}
+                    </Text>
+                  </View>
                 </View>
-              </View>
+              )}
 
               <View className="border-t border-gray-200 pt-3 mt-2">
-                <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center justify-between">
                   <Text className="text-xl font-bold text-gray-900">Total</Text>
                   <View className="flex-row items-center gap-1">
                     <FontAwesome5 name="rupee-sign" size={18} color="#ea580c" />
@@ -1077,50 +1036,53 @@ export default function OrderDetailsPage() {
                     </Text>
                   </View>
                 </View>
-
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm text-gray-600 font-medium">
-                    Delivery Method
-                  </Text>
-                  <Text className="text-sm font-medium text-gray-900">
-                    {deliveryMethod || "Standard Delivery"}
-                  </Text>
-                </View>
-
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-gray-600 font-medium">
-                    Payment Method
-                  </Text>
-                  <View className="flex-row items-center gap-2">
-                    {isPayOnDelivery ? (
-                      <>
-                        <MaterialCommunityIcons
-                          name="truck"
-                          size={20}
-                          color="#16a34a"
-                        />
-                        <Text className="text-sm font-medium text-gray-900">
-                          Pay On Delivery
-                        </Text>
-                      </>
-                    ) : isPaid ? (
-                      <>
-                        <MaterialIcons
-                          name="payment"
-                          size={20}
-                          color="#16a34a"
-                        />
-                        <Text className="text-sm font-medium text-gray-900">
-                          PAID
-                        </Text>
-                      </>
-                    ) : (
-                      <Text className="text-sm font-medium text-gray-900">
-                        {paymentMethod || "N/A"}
-                      </Text>
-                    )}
+                {!isDineIn && (
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-sm text-gray-600 font-medium">
+                      Delivery Method
+                    </Text>
+                    <Text className="text-sm font-medium text-gray-900">
+                      {deliveryMethod || "Standard Delivery"}
+                    </Text>
                   </View>
-                </View>
+                )}
+
+                {!isDineIn && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-sm text-gray-600 font-medium">
+                      Payment Method
+                    </Text>
+                    <View className="flex-row items-center gap-2">
+                      {isPayOnDelivery ? (
+                        <>
+                          <MaterialCommunityIcons
+                            name="truck"
+                            size={20}
+                            color="#16a34a"
+                          />
+                          <Text className="text-sm font-medium text-gray-900">
+                            Pay On Delivery
+                          </Text>
+                        </>
+                      ) : isPaid ? (
+                        <>
+                          <MaterialIcons
+                            name="payment"
+                            size={20}
+                            color="#16a34a"
+                          />
+                          <Text className="text-sm font-medium text-gray-900">
+                            PAID
+                          </Text>
+                        </>
+                      ) : (
+                        <Text className="text-sm font-medium text-gray-900">
+                          {paymentMethod || "N/A"}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -1151,38 +1113,39 @@ export default function OrderDetailsPage() {
 
           {/* Action Buttons */}
           <View className="gap-3 mt-4">
-            {["Pending", "Accepted", "Rescheduled"].includes(order.status) && (
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={() => setIsRescheduleModalOpen(true)}
-                  className="flex-1 bg-orange-600 py-3 rounded-lg items-center flex-row justify-center gap-2"
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name="calendar-clock"
-                    size={20}
-                    color="#ffffff"
-                  />
-                  <Text className="text-white font-semibold text-base">
-                    Reschedule
-                  </Text>
-                </TouchableOpacity>
+            {["Pending", "Accepted", "Rescheduled"].includes(order.status) &&
+              !isDineIn && (
+                <View className="flex-row gap-3">
+                  <TouchableOpacity
+                    onPress={() => setIsRescheduleModalOpen(true)}
+                    className="flex-1 bg-orange-600 py-3 rounded-lg items-center flex-row justify-center gap-2"
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons
+                      name="calendar-clock"
+                      size={20}
+                      color="#ffffff"
+                    />
+                    <Text className="text-white font-semibold text-base">
+                      Reschedule
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() => setIsCancelModalOpen(true)}
-                  className="flex-1 bg-red-600 py-3 rounded-lg items-center"
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-white font-semibold text-base">
-                    Cancel Order
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+                  <TouchableOpacity
+                    onPress={() => setIsCancelModalOpen(true)}
+                    className="flex-1 bg-red-600 py-3 rounded-lg items-center"
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-white font-semibold text-base">
+                      Cancel Order
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
             <TouchableOpacity
               onPress={() => router.back()}
-              className="bg-gray-100 py-3 rounded-lg items-center"
+              className="bg-gray-300 py-3 rounded-lg items-center"
               activeOpacity={0.7}
             >
               <Text className="text-gray-700 font-semibold text-base">

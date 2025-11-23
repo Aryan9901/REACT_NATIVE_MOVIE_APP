@@ -107,4 +107,6 @@ export const ORDER_ATTRIBUTE_KEYS = {
   IS_SERVICE: "Is Service",
   SUBSCRIBED_ON: "Subscribed On",
   PAYMENT_METHOD: "Payment Method",
+  TABLE_NUMBER: "Table Number",
+  CANCELLED_BY: "Cancelled By",
 };

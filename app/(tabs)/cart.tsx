@@ -57,6 +57,9 @@ interface VendorConfig {
   maxDays?: string;
   deliveryMethod?: { product?: string };
   paymentMethod?: string;
+  deliveryLabel?: string;
+  pickupLabel?: string;
+  isTableRequired?: boolean;
 }
 
 export default function CartPage() {
@@ -104,6 +107,9 @@ export default function CartPage() {
   const [showOrderConfirmation, setShowOrderConfirmation] =
     useState<boolean>(false);
   const [orderConfirmationData, setOrderConfirmationData] = useState<any>(null);
+  const [tableNo, setTableNo] = useState<number | undefined>(undefined);
+  const [isTableRequired, setIsTableRequired] = useState<boolean>(false);
+  const [showTableNoError, setShowTableNoError] = useState<boolean>(false);
 
   const handleIncrement = (variantId: string, currentQuantity: number) => {
     if (currentQuantity >= 9) return;
@@ -312,6 +318,17 @@ export default function CartPage() {
       setDeliveryOption(vendorConfig.productDeliveryType);
     }
   }, [vendorConfig.productDeliveryType]);
+
+  // Set table number requirement based on delivery option
+  useEffect(() => {
+    if (deliveryOption === "Self Pickup") {
+      const isRequired = vendorConfig?.isTableRequired === true;
+      setIsTableRequired(isRequired);
+    } else {
+      setIsTableRequired(false);
+      setTableNo(undefined);
+    }
+  }, [deliveryOption, vendorConfig?.isTableRequired]);
 
   // Check if vendor has service collection
   const hasServiceCollection = !!vendorConfig?.deliverySlots?.service;
@@ -570,8 +587,19 @@ export default function CartPage() {
       deliveryOption === "Self Pickup" && hasServiceCollection;
     const isMembership = deliveryInfo.type === "membership";
 
-    // Check for self pickup slot selection
-    if (deliveryOption === "Self Pickup" && !isMembership && !selectedSlot) {
+    // Check table number first if required
+    if (isTableRequired && !tableNo) {
+      setShowTableNoError(true);
+      return;
+    }
+
+    // Check for self pickup slot selection (skip for Dine In)
+    if (
+      deliveryOption === "Self Pickup" &&
+      !isMembership &&
+      !selectedSlot &&
+      vendorConfig?.pickupLabel !== "Dine In"
+    ) {
       setSlotWarningMessage("Please select a pickup time slot to continue.");
       setShowSlotWarningModal(true);
       return;
@@ -594,7 +622,12 @@ export default function CartPage() {
         setShowSlotWarningModal(true);
         return;
       }
-      if (!isMembership && hasServiceCollection && !selectedCollectionSlot) {
+      if (
+        !isMembership &&
+        hasServiceCollection &&
+        !selectedCollectionSlot &&
+        vendorConfig?.pickupLabel !== "Dine In"
+      ) {
         setSlotWarningMessage("Please select a collection time slot.");
         setShowSlotWarningModal(true);
         return;
@@ -681,10 +714,19 @@ export default function CartPage() {
           { name: "Rescheduled On", value: "" },
           { name: "Approved On", value: "" },
           { name: "Out For Delivery On", value: "" },
-          { name: "Paid On", value: "" },
+          {
+            name: "Paid On",
+            value:
+              paymentMethod === PAYMENT_MODE.PREPAID
+                ? new Date().toISOString()
+                : "",
+          },
           { name: "Cancelled On", value: "" },
           ...(collectionTime
             ? [{ name: "Service Pickup Time", value: collectionTime }]
+            : []),
+          ...(deliveryOption === "Self Pickup" && tableNo
+            ? [{ name: "Table Number", value: tableNo.toString() }]
             : []),
         ],
       };
@@ -952,16 +994,6 @@ export default function CartPage() {
     }
   };
 
-  // Set delivery option based on vendor config
-  useEffect(() => {
-    if (
-      vendorConfig.productDeliveryType &&
-      vendorConfig.productDeliveryType !== "Both"
-    ) {
-      setDeliveryOption(vendorConfig.productDeliveryType);
-    }
-  }, [vendorConfig.productDeliveryType]);
-
   if (cart.length === 0) {
     return <EmptyCart />;
   }
@@ -1019,91 +1051,144 @@ export default function CartPage() {
               deliveryOption={deliveryOption}
               onDeliveryOptionChange={setDeliveryOption}
               showOptions={vendorConfig.productDeliveryType === "Both"}
+              vendorConfig={vendorConfig}
             />
 
             {/* Delivery Slots */}
-            {!hasServiceCollection && deliveryInfo?.type !== "membership" && (
-              <DeliverySlots
-                deliveryInfo={deliveryInfo}
-                deliveryOption={deliveryOption}
-                selectedDate={selectedDate}
-                selectedSlot={selectedSlot}
-                onDateChange={setSelectedDate}
-                onSlotSelect={setSelectedSlot}
-                onCalendarOpen={() => setIsCalendarOpen(true)}
-                formatDate={formatDate}
-                formatFullDate={formatFullDate}
-              />
-            )}
+            {!hasServiceCollection &&
+              deliveryInfo?.type !== "membership" &&
+              !(
+                deliveryOption === "Self Pickup" &&
+                vendorConfig?.pickupLabel === "Dine In"
+              ) && (
+                <DeliverySlots
+                  deliveryInfo={deliveryInfo}
+                  deliveryOption={deliveryOption}
+                  selectedDate={selectedDate}
+                  selectedSlot={selectedSlot}
+                  onDateChange={setSelectedDate}
+                  onSlotSelect={setSelectedSlot}
+                  onCalendarOpen={() => setIsCalendarOpen(true)}
+                  formatDate={formatDate}
+                  formatFullDate={formatFullDate}
+                />
+              )}
 
             {/* Collection Slots */}
-            {collectionInfo && deliveryInfo?.type !== "membership" && (
-              <CollectionSlots
-                collectionInfo={collectionInfo}
-                selectedCollectionDate={selectedCollectionDate}
-                selectedCollectionSlot={selectedCollectionSlot}
-                onDateChange={setSelectedCollectionDate}
-                onSlotSelect={setSelectedCollectionSlot}
-                onCalendarOpen={() => setIsCalendarOpen(true)}
-                formatDate={formatDate}
-                formatFullDate={formatFullDate}
-              />
-            )}
+            {collectionInfo &&
+              deliveryInfo?.type !== "membership" &&
+              !(
+                deliveryOption === "Self Pickup" &&
+                vendorConfig?.pickupLabel === "Dine In"
+              ) && (
+                <CollectionSlots
+                  collectionInfo={collectionInfo}
+                  selectedCollectionDate={selectedCollectionDate}
+                  selectedCollectionSlot={selectedCollectionSlot}
+                  onDateChange={setSelectedCollectionDate}
+                  onSlotSelect={setSelectedCollectionSlot}
+                  onCalendarOpen={() => setIsCalendarOpen(true)}
+                  formatDate={formatDate}
+                  formatFullDate={formatFullDate}
+                />
+              )}
           </View>
         </View>
 
+        {/* Table Number Input */}
+        {isTableRequired && (
+          <View className="bg-white rounded-md mx-2 mb-1 py-3 px-2 shadow-lg">
+            <Text className="text-lg font-bold mb-2 text-gray-900">
+              Table Number <Text className="text-red-500">*</Text>
+            </Text>
+            <TextInput
+              value={tableNo?.toString() || ""}
+              onChangeText={(text) => {
+                if (text === "") {
+                  setTableNo(undefined);
+                  return;
+                }
+                const numValue = parseInt(text, 10);
+                if (!isNaN(numValue) && numValue >= 1 && numValue <= 50) {
+                  setTableNo(numValue);
+                  setShowTableNoError(false);
+                }
+              }}
+              placeholder="Enter your table number"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              maxLength={2}
+              className={`border-2 rounded-lg p-3 text-gray-700 bg-gray-50 ${
+                showTableNoError ? "border-red-500" : "border-gray-200"
+              }`}
+            />
+            {showTableNoError && (
+              <Text className="text-xs text-red-500 mt-1">
+                Please enter your table number to continue
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Delivery Address */}
-        <View className="bg-white rounded-md mx-2 mb-1 shadow-lg py-3 px-2">
-          <Text className="text-lg font-bold mb-1 text-gray-900">
-            {deliveryOption === "Home Delivery"
-              ? "Delivery Address"
-              : "Pickup From"}
-          </Text>
-          {deliveryOption === "Home Delivery" ? (
-            <View>
-              <View className="flex-row items-start mb-3">
+        {!(
+          deliveryOption === "Self Pickup" &&
+          vendorConfig?.pickupLabel === "Dine In"
+        ) && (
+          <View className="bg-white rounded-md mx-2 mb-1 shadow-lg py-3 px-2">
+            <Text className="text-lg font-bold mb-1 text-gray-900">
+              {deliveryOption === "Home Delivery"
+                ? vendorConfig?.deliveryLabel || "Delivery Address"
+                : vendorConfig?.pickupLabel
+                ? `${vendorConfig.pickupLabel} From`
+                : "Pickup From"}
+            </Text>
+            {deliveryOption === "Home Delivery" ? (
+              <View>
+                <View className="flex-row items-start mb-3">
+                  <Ionicons
+                    name="location"
+                    size={20}
+                    color="#F97316"
+                    style={{ marginTop: 2 }}
+                  />
+                  <View className="flex-1 ml-2">
+                    {selectedAddress ? (
+                      <Text className="text-gray-700">
+                        {String(formatAddress(selectedAddress))}
+                      </Text>
+                    ) : (
+                      <Text className="text-gray-500">No address selected</Text>
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setIsAddressModalOpen(true)}
+                  className="bg-orange-500 rounded-lg py-3 items-center"
+                  activeOpacity={0.8}
+                >
+                  <Text className="text-white font-bold">
+                    {selectedAddress ? "Change Address" : "Select Address"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View className="flex-row items-start">
                 <Ionicons
-                  name="location"
+                  name="storefront"
                   size={20}
                   color="#F97316"
                   style={{ marginTop: 2 }}
                 />
-                <View className="flex-1 ml-2">
-                  {selectedAddress ? (
-                    <Text className="text-gray-700">
-                      {String(formatAddress(selectedAddress))}
-                    </Text>
-                  ) : (
-                    <Text className="text-gray-500">No address selected</Text>
-                  )}
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => setIsAddressModalOpen(true)}
-                className="bg-orange-500 rounded-lg py-3 items-center"
-                activeOpacity={0.8}
-              >
-                <Text className="text-white font-bold">
-                  {selectedAddress ? "Change Address" : "Select Address"}
+                <Text className="flex-1 ml-2 text-gray-700">
+                  {typeof vendorData?.address === "string"
+                    ? vendorData.address
+                    : formatAddress(vendorData?.address) || "Vendor address"}
                 </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View className="flex-row items-start">
-              <Ionicons
-                name="storefront"
-                size={20}
-                color="#F97316"
-                style={{ marginTop: 2 }}
-              />
-              <Text className="flex-1 ml-2 text-gray-700">
-                {typeof vendorData?.address === "string"
-                  ? vendorData.address
-                  : formatAddress(vendorData?.address) || "Vendor address"}
-              </Text>
-            </View>
-          )}
-        </View>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Order Notes */}
         <View className="bg-white rounded-md mx-2 mb-1 py-3 px-2 shadow-lg">
