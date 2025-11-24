@@ -37,6 +37,7 @@ export default function ProductDetailsPage() {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [confettiElements, setConfettiElements] = useState<any[]>([]);
+  const [webViewHeight, setWebViewHeight] = useState(150);
 
   // Extract variant name from image URL (last part before extension)
   const extractVariantFromImageUrl = (imageUrl: string): string => {
@@ -94,6 +95,7 @@ export default function ProductDetailsPage() {
   const imageScrollRef = useRef<ScrollView>(null);
   const modalScrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const variantRefs = useRef<{ [key: number]: View | null }>({});
 
   // Load product data from AsyncStorage
   useEffect(() => {
@@ -228,6 +230,25 @@ export default function ProductDetailsPage() {
     setSelectedVariantIndex(index);
     // Reset manually selected image when variant changes
     setManuallySelectedImage(null);
+
+    // Scroll to center the selected variant
+    setTimeout(() => {
+      const variantElement = variantRefs.current[index];
+      if (variantElement && variantScrollRef.current) {
+        variantElement.measureLayout(
+          variantScrollRef.current as any,
+          (x, y, width, height) => {
+            const scrollToX = x - SCREEN_WIDTH / 2 + width / 2;
+            variantScrollRef.current?.scrollTo({
+              x: Math.max(0, scrollToX),
+              y: 0,
+              animated: true,
+            });
+          },
+          () => {}
+        );
+      }
+    }, 100);
 
     // Check if the new variant is already in cart
     const newVariant = availableVariants[index];
@@ -535,13 +556,14 @@ export default function ProductDetailsPage() {
             {/* Variant Selection */}
             {availableVariants.length > 1 && (
               <View className="mb-2">
-                <Text className="text-sm font-semibold text-gray-700 mb-2">
+                <Text className="text-sm font-semibold text-gray-700">
                   Select Variant
                 </Text>
                 <ScrollView
                   ref={variantScrollRef}
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  className="pt-2"
                 >
                   {availableVariants.map((variant: any, index: number) => {
                     const isSelected = selectedVariantIndex === index;
@@ -553,40 +575,63 @@ export default function ProductDetailsPage() {
                           ).toFixed(0)
                         : 0;
 
+                    // Get quantity for this variant from cart
+                    const variantCartItem = cart.find(
+                      (item: any) =>
+                        item.productId === product.productId &&
+                        item.variantId === variant.variantId
+                    );
+                    const variantQuantity = variantCartItem?.quantity || 0;
+
                     return (
-                      <TouchableOpacity
+                      <View
                         key={variant.variantId}
-                        onPress={() => handleVariantChange(index)}
-                        className={`mr-2 flex flex-col items-center px-4 py-3 rounded-lg border-2 ${
-                          isSelected
-                            ? "border-orange-500 bg-orange-50"
-                            : "border-gray-200 bg-white"
-                        }`}
+                        ref={(ref: any) => (variantRefs.current[index] = ref)}
+                        collapsable={false}
                       >
-                        <Text
-                          className={`text-sm font-bold ${
-                            isSelected ? "text-orange-600" : "text-gray-900"
+                        <TouchableOpacity
+                          onPress={() => handleVariantChange(index)}
+                          className={`mr-2 flex flex-col items-center px-4 py-3 rounded-lg border-2 ${
+                            isSelected
+                              ? "border-orange-500 bg-orange-50"
+                              : "border-gray-200 bg-white"
                           }`}
                         >
-                          {variant.variant} {variant.unit}
-                        </Text>
-                        <View className="flex flex-row items-center justify-center gap-2">
-                          <Text className="text-sm font-bold text-green-600 mt-1">
-                            ₹{variant.netPrice}
-                          </Text>
-                          {variant.mrp > variant.netPrice && (
-                            <Text className="text-xs text-gray-500 line-through">
-                              ₹{variant.mrp}
-                            </Text>
+                          {variantQuantity > 0 && (
+                            <View className="absolute -top-2 -right-1 bg-orange-500 rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
+                              <Text className="text-white text-[10px] font-bold">
+                                {variantQuantity}
+                              </Text>
+                            </View>
                           )}
-                        </View>
-
-                        {Number(discount) > 0 && (
-                          <Text className="text-xs text-red-600 font-bold mt-1">
-                            {discount}% OFF
-                          </Text>
-                        )}
-                      </TouchableOpacity>
+                          {Number(discount) > 0 && (
+                            <View className="absolute -top-2 -left-1 bg-red-200 px-2 rounded-full">
+                              <Text className="text-xs  text-red-600 font-bold mt-1">
+                                {discount}% OFF
+                              </Text>
+                            </View>
+                          )}
+                          <View className="relative">
+                            <Text
+                              className={`text-sm font-bold ${
+                                isSelected ? "text-orange-600" : "text-gray-900"
+                              }`}
+                            >
+                              {variant.variant} {variant.unit}
+                            </Text>
+                          </View>
+                          <View className="flex flex-row items-center justify-center gap-2">
+                            <Text className="text-sm font-bold text-green-600 mt-1">
+                              ₹{variant.netPrice}
+                            </Text>
+                            {variant.mrp > variant.netPrice && (
+                              <Text className="text-xs text-gray-500 line-through">
+                                ₹{variant.mrp}
+                              </Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      </View>
                     );
                   })}
                 </ScrollView>
@@ -745,6 +790,12 @@ export default function ProductDetailsPage() {
                               height: auto;
                             }
                           </style>
+                          <script>
+                            window.onload = function() {
+                              const height = document.body.scrollHeight;
+                              window.ReactNativeWebView.postMessage(JSON.stringify({ height }));
+                            };
+                          </script>
                         </head>
                         <body>
                           ${product.description}
@@ -753,25 +804,23 @@ export default function ProductDetailsPage() {
                     `,
                     }}
                     style={{
-                      height: showFullDescription ? 400 : 150,
+                      height: webViewHeight,
                       backgroundColor: "transparent",
                     }}
-                    scrollEnabled={showFullDescription}
+                    scrollEnabled={false}
                     showsVerticalScrollIndicator={false}
                     androidLayerType="software"
-                  />
-                  {product.description.length > 200 && (
-                    <TouchableOpacity
-                      onPress={() =>
-                        setShowFullDescription(!showFullDescription)
+                    onMessage={(event) => {
+                      try {
+                        const data = JSON.parse(event.nativeEvent.data);
+                        if (data.height) {
+                          setWebViewHeight(data.height);
+                        }
+                      } catch (error) {
+                        console.log("Error parsing WebView message:", error);
                       }
-                      className="bg-gray-50 px-3 py-2 border-t border-gray-200"
-                    >
-                      <Text className="text-orange-500 font-semibold text-sm text-center">
-                        {showFullDescription ? "Show Less" : "Read More"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                    }}
+                  />
                 </View>
               </View>
             )}
