@@ -77,6 +77,7 @@ export default function StorePage() {
 
     try {
       setIsLoading(true);
+
       const result = await productService.fetchProducts(
         selectedSubCategory.id,
         selectedVendor.id
