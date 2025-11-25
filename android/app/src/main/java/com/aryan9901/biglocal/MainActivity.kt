@@ -1,4 +1,4 @@
-package com.aryan9901.mobile_movie_app
+package com.aryan9901.biglocal
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

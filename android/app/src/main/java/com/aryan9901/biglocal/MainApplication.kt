@@ -1,4 +1,4 @@
-package com.aryan9901.mobile_movie_app
+package com.aryan9901.biglocal
 
 import android.app.Application
 import android.content.res.Configuration
