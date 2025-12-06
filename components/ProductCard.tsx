@@ -333,62 +333,61 @@ export default function ProductCard({
                 </Text>
               )}
             </View>
-          </View>
-
-          {/* Add to Cart Button */}
-          {selectedVariant?.available && (
-            <>
-              {quantityInCart === 0 ? (
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleAddToCart();
-                  }}
-                  disabled={isAdding}
-                  className="bg-orange-100 w-16 h-7 ml-auto border border-orange-600 rounded-full items-center justify-center"
-                >
-                  {isAdding ? (
-                    <ActivityIndicator size="small" color="#ea580c" />
-                  ) : (
-                    <Text className="text-orange-600 text-xs font-bold">
-                      ADD
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <View className="flex-row w-24 h-7 ml-auto items-center justify-between bg-orange-100 border border-orange-600 rounded-full px-1">
+            {/* Add to Cart Button */}
+            {selectedVariant?.available && (
+              <>
+                {quantityInCart === 0 ? (
                   <TouchableOpacity
                     onPress={(e) => {
                       e.stopPropagation();
-                      handleDecrement();
-                    }}
-                    className="w-8 h-8 items-center justify-center"
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="remove" size={18} color="#ea580c" />
-                  </TouchableOpacity>
-                  <Text className="text-orange-600 font-bold text-sm px-1">
-                    {quantityInCart}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleIncrement();
+                      handleAddToCart();
                     }}
                     disabled={isAdding}
-                    className="w-8 h-8 items-center justify-center"
-                    activeOpacity={0.7}
+                    className="bg-orange-100 w-16 h-7 ml-auto border border-orange-600 rounded-full items-center justify-center"
                   >
                     {isAdding ? (
                       <ActivityIndicator size="small" color="#ea580c" />
                     ) : (
-                      <Ionicons name="add" size={18} color="#ea580c" />
+                      <Text className="text-orange-600 text-xs font-bold">
+                        ADD
+                      </Text>
                     )}
                   </TouchableOpacity>
-                </View>
-              )}
-            </>
-          )}
+                ) : (
+                  <View className="flex-row w-24 h-7 ml-auto items-center justify-between bg-orange-100 border border-orange-600 rounded-full px-1">
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDecrement();
+                      }}
+                      className="w-8 h-8 items-center justify-center"
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="remove" size={18} color="#ea580c" />
+                    </TouchableOpacity>
+                    <Text className="text-orange-600 font-bold text-sm px-1">
+                      {quantityInCart}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleIncrement();
+                      }}
+                      disabled={isAdding}
+                      className="w-8 h-8 items-center justify-center"
+                      activeOpacity={0.7}
+                    >
+                      {isAdding ? (
+                        <ActivityIndicator size="small" color="#ea580c" />
+                      ) : (
+                        <Ionicons name="add" size={18} color="#ea580c" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
 
