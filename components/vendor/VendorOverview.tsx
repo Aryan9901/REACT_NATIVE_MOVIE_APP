@@ -1,28 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
 import {
   Linking,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
-import { WebView } from "react-native-webview";
+import RenderHtml from "react-native-render-html";
 
 interface VendorOverviewProps {
   vendor: any;
 }
 
-const IconMap: any = {
-  youtube: { icon: "logo-youtube", color: "#DC2626" },
-  facebook: { icon: "logo-facebook", color: "#2563EB" },
-  instagram: { icon: "logo-instagram", color: "#DB2777" },
-  Twitter: { icon: "logo-twitter", color: "#000000" },
-  website: { icon: "globe-outline", color: "#2563EB" },
-};
-
 export default function VendorOverview({ vendor }: VendorOverviewProps) {
-  const [webViewHeight, setWebViewHeight] = useState(200);
+  const { width } = useWindowDimensions();
 
   const getAttributeValue = (name: string) => {
     const attr = vendor?.attributeValues?.find(
@@ -31,22 +23,16 @@ export default function VendorOverview({ vendor }: VendorOverviewProps) {
     return attr?.value || "";
   };
 
-  const getSocialMediaLinks = () => {
-    const labels = ["facebook", "youtube", "instagram", "Twitter", "website"];
-    return (
-      vendor?.attributeValues?.filter(
-        (attr: any) => labels.includes(attr?.name) && attr?.value
-      ) || []
-    );
-  };
-
   const formatAddress = () => {
-    const addr = vendor?.address;
+    const addr = vendor?.detailedAddress || vendor?.address;
     if (!addr) return "Address not available";
 
     const parts = [];
+    if (addr.address1) parts.push(addr.address1);
+    if (addr.address2) parts.push(addr.address2);
     if (addr.city) parts.push(addr.city);
     if (addr.state) parts.push(addr.state);
+    if (addr.zipCode) parts.push(addr.zipCode);
 
     return parts.length > 0 ? parts.join(", ") : "Address not available";
   };
@@ -55,33 +41,21 @@ export default function VendorOverview({ vendor }: VendorOverviewProps) {
     Linking.openURL(`tel:${phone}`);
   };
 
-  const handleOpenLink = (url: string) => {
-    if (!url.startsWith("http")) {
-      url = `https://${url}`;
-    }
-    Linking.openURL(url);
+  const handleEmail = (email: string) => {
+    Linking.openURL(`mailto:${email}`);
   };
 
   const handleOpenMap = () => {
-    const addr = vendor?.address;
+    const addr = vendor?.detailedAddress || vendor?.address;
     if (!addr) return;
-
-    // Build address string for Google Maps
-    const addressParts = [];
-    if (addr.address1) addressParts.push(addr.address1);
-    if (addr.address2) addressParts.push(addr.address2);
-    if (addr.city) addressParts.push(addr.city);
-    if (addr.state) addressParts.push(addr.state);
-    if (addr.zipCode) addressParts.push(addr.zipCode);
-
-    const addressString = addressParts.join(", ");
-    const encodedAddress = encodeURIComponent(addressString);
 
     // Use coordinates if available, otherwise use address
     let mapUrl;
     if (addr.latitude && addr.longitude) {
       mapUrl = `https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`;
-    } else if (addressString) {
+    } else {
+      const addressString = formatAddress();
+      const encodedAddress = encodeURIComponent(addressString);
       mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
     }
 
@@ -91,7 +65,6 @@ export default function VendorOverview({ vendor }: VendorOverviewProps) {
   };
 
   const aboutUs = getAttributeValue("aboutUs");
-  const socialMedia = getSocialMediaLinks();
 
   return (
     <ScrollView className="flex-1 bg-gray-50 px-2">
@@ -101,107 +74,62 @@ export default function VendorOverview({ vendor }: VendorOverviewProps) {
           <Text className="text-lg font-semibold text-gray-900 mb-3 px-4 pt-4">
             About Us
           </Text>
-          <View className="bg-gray-50">
-            <WebView
-              originWhitelist={["*"]}
-              source={{
-                html: `
-                <!DOCTYPE html>
-                <html>
-                  <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                    <style>
-                      * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                      }
-                      body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                        font-size: 14px;
-                        color: #374151;
-                        line-height: 1.6;
-                        padding: 12px 16px;
-                        background-color: #F9FAFB;
-                        overflow-x: hidden;
-                      }
-                      h1 {
-                        font-size: 20px;
-                        font-weight: bold;
-                        color: #111827;
-                        margin-bottom: 12px;
-                      }
-                      h2 {
-                        font-size: 18px;
-                        font-weight: bold;
-                        color: #111827;
-                        margin-bottom: 10px;
-                      }
-                      h3 {
-                        font-size: 16px;
-                        font-weight: 600;
-                        color: #111827;
-                        margin-bottom: 8px;
-                      }
-                      p {
-                        margin-bottom: 12px;
-                        line-height: 1.6;
-                      }
-                      ul, ol {
-                        margin-bottom: 12px;
-                        padding-left: 24px;
-                      }
-                      li {
-                        margin-bottom: 6px;
-                        line-height: 1.6;
-                      }
-                      strong {
-                        font-weight: 600;
-                        color: #111827;
-                      }
-                      em {
-                        font-style: italic;
-                      }
-                      a {
-                        color: #F97316;
-                        text-decoration: underline;
-                      }
-                      img {
-                        max-width: 100%;
-                        height: auto;
-                        border-radius: 8px;
-                        margin: 12px 0;
-                      }
-                    </style>
-                    <script>
-                      window.onload = function() {
-                        const height = document.body.scrollHeight;
-                        window.ReactNativeWebView.postMessage(JSON.stringify({ height }));
-                      };
-                    </script>
-                  </head>
-                  <body>
-                    ${aboutUs}
-                  </body>
-                </html>
-              `,
-              }}
-              style={{
-                height: webViewHeight,
-                backgroundColor: "transparent",
-              }}
-              scrollEnabled={false}
-              showsVerticalScrollIndicator={false}
-              androidLayerType="software"
-              onMessage={(event) => {
-                try {
-                  const data = JSON.parse(event.nativeEvent.data);
-                  if (data.height) {
-                    setWebViewHeight(data.height);
-                  }
-                } catch (e) {
-                  // Ignore parsing errors
-                }
+          <View className="bg-gray-50 px-4 pb-4">
+            <RenderHtml
+              contentWidth={width - 32}
+              source={{ html: aboutUs }}
+              tagsStyles={{
+                body: {
+                  fontSize: 14,
+                  color: "#374151",
+                  lineHeight: 22,
+                },
+                h1: {
+                  fontSize: 20,
+                  fontWeight: "bold",
+                  color: "#111827",
+                  marginBottom: 12,
+                },
+                h2: {
+                  fontSize: 18,
+                  fontWeight: "bold",
+                  color: "#111827",
+                  marginBottom: 10,
+                },
+                h3: {
+                  fontSize: 16,
+                  fontWeight: "600",
+                  color: "#111827",
+                  marginBottom: 8,
+                },
+                p: {
+                  marginBottom: 12,
+                  lineHeight: 22,
+                },
+                ul: {
+                  marginBottom: 12,
+                  paddingLeft: 24,
+                },
+                ol: {
+                  marginBottom: 12,
+                  paddingLeft: 24,
+                },
+                li: {
+                  marginBottom: 6,
+                  lineHeight: 22,
+                },
+                strong: {
+                  fontWeight: "600",
+                  color: "#111827",
+                },
+                a: {
+                  color: "#F97316",
+                  textDecorationLine: "underline",
+                },
+                img: {
+                  borderRadius: 8,
+                  marginVertical: 12,
+                },
               }}
             />
           </View>
@@ -232,6 +160,24 @@ export default function VendorOverview({ vendor }: VendorOverviewProps) {
           </TouchableOpacity>
         )}
 
+        {/* Alternate Phone */}
+        {vendor.alternateContact && (
+          <TouchableOpacity
+            onPress={() => handleCall(vendor.alternateContact)}
+            className="flex-row items-center mb-4"
+          >
+            <View className="w-10 h-10 bg-emerald-100 rounded-full items-center justify-center">
+              <Ionicons name="call" size={20} color="#10B981" />
+            </View>
+            <View className="ml-3 flex-1">
+              <Text className="text-sm font-medium text-gray-900">
+                {vendor.alternateContact}
+              </Text>
+              <Text className="text-xs text-gray-500">Alternate contact</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Address */}
         <TouchableOpacity
           onPress={handleOpenMap}
@@ -244,41 +190,30 @@ export default function VendorOverview({ vendor }: VendorOverviewProps) {
             <Text className="text-sm font-medium text-gray-900">
               {formatAddress()}
             </Text>
-            <Text className="text-xs text-gray-500">Our location</Text>
+            <Text className="text-xs text-gray-500">View on map</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* Social Media Links */}
-        {socialMedia.map((link: any) => {
-          const iconData = IconMap[link.name];
-          if (!iconData) return null;
-
-          return (
-            <TouchableOpacity
-              key={link.name}
-              onPress={() => handleOpenLink(link.value)}
-              className="flex-row items-center mb-4"
-            >
-              <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center">
-                <Ionicons
-                  name={iconData.icon as any}
-                  size={20}
-                  color={iconData.color}
-                />
-              </View>
-              <View className="ml-3 flex-1">
-                <Text className="text-sm font-medium text-gray-900">
-                  {link.name}
-                </Text>
-                <Text className="text-xs text-gray-500" numberOfLines={1}>
-                  {link.value}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          );
-        })}
+        {/* Email */}
+        {vendor.emailId && (
+          <TouchableOpacity
+            onPress={() => handleEmail(vendor.emailId)}
+            className="flex-row items-center mb-4"
+          >
+            <View className="w-10 h-10 bg-yellow-100 rounded-full items-center justify-center">
+              <Ionicons name="mail" size={20} color="#F59E0B" />
+            </View>
+            <View className="ml-3 flex-1">
+              <Text className="text-sm font-medium text-gray-900">
+                {vendor.emailId}
+              </Text>
+              <Text className="text-xs text-gray-500">
+                For enquiry & support
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );

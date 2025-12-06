@@ -1,14 +1,16 @@
 import VendorBusinessHours from "@/components/vendor/VendorBusinessHours";
 import VendorBusinessInfo from "@/components/vendor/VendorBusinessInfo";
 import VendorCategories from "@/components/vendor/VendorCategories";
+import VendorEventDetails from "@/components/vendor/VendorEventDetails";
 import VendorGallery from "@/components/vendor/VendorGallery";
 import VendorLocation from "@/components/vendor/VendorLocation";
 import VendorOverview from "@/components/vendor/VendorOverview";
 import VendorProfileHeader from "@/components/vendor/VendorProfileHeader";
+import VendorServices from "@/components/vendor/VendorServices";
 import { useStoreStore } from "@/stores";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -20,15 +22,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-const tabs = [
-  { id: "overview", label: "Overview" },
-  { id: "gallery", label: "Gallery" },
-  { id: "categories", label: "Categories" },
-  { id: "business-hours", label: "Business Hours" },
-  { id: "business-info", label: "Business Info" },
-  { id: "location", label: "Location" },
-];
 
 export default function VendorProfilePage() {
   const router = useRouter();
@@ -44,6 +37,38 @@ export default function VendorProfilePage() {
     selectedVendor?.attributeValues?.find(
       (attr: any) => attr?.name === "isShowcaseOnly"
     )?.value === "true";
+
+  // Check if vendor is event vendor
+  const isEventVendor =
+    selectedVendor?.attributeValues?.find(
+      (attr: any) => attr?.name === "isEventVendor"
+    )?.value === "true";
+
+  // Dynamic tabs based on vendor type
+  const tabs: any = useMemo(() => {
+    const baseTabs = [{ id: "overview", label: "Overview" }];
+
+    // Add event tab if event vendor
+    if (isEventVendor) {
+      baseTabs.push({ id: "event", label: "Event" });
+    }
+
+    // Add categories/services tab
+    baseTabs.push({
+      id: "categories",
+      label: isShowcaseOnly ? "Services" : "Categories",
+    });
+
+    // Add remaining tabs
+    baseTabs.push(
+      { id: "gallery", label: "Gallery" },
+      { id: "business-hours", label: "Business Hours" },
+      { id: "business-info", label: "Business Info" },
+      { id: "location", label: "Locate Us" }
+    );
+
+    return baseTabs;
+  }, [isShowcaseOnly, isEventVendor]);
 
   const handleBack = () => {
     // Go to home page for showcase-only vendors, otherwise go to store
@@ -167,7 +192,7 @@ export default function VendorProfilePage() {
               className="px-4"
               decelerationRate="fast"
             >
-              {tabs.map((tab) => (
+              {tabs.map((tab: any) => (
                 <View
                   key={tab.id}
                   ref={(ref: any) => (tabRefs.current[tab.id] = ref)}
@@ -205,14 +230,23 @@ export default function VendorProfilePage() {
               <VendorOverview vendor={selectedVendor} />
             </View>
 
+            {/* Event - Conditionally rendered */}
+            {activeTab === "event" && isEventVendor && (
+              <VendorEventDetails vendor={selectedVendor} />
+            )}
+
+            {/* Categories/Services - Conditionally rendered */}
+            {activeTab === "categories" && !isShowcaseOnly && (
+              <VendorCategories vendor={selectedVendor} />
+            )}
+
+            {activeTab === "categories" && isShowcaseOnly && (
+              <VendorServices vendor={selectedVendor} />
+            )}
+
             {/* Gallery - Conditionally rendered */}
             {activeTab === "gallery" && (
               <VendorGallery vendor={selectedVendor} />
-            )}
-
-            {/* Categories - Conditionally rendered */}
-            {activeTab === "categories" && (
-              <VendorCategories vendor={selectedVendor} />
             )}
 
             {/* Business Hours - Conditionally rendered */}
