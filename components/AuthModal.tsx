@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores";
 import { FontAwesome } from "@expo/vector-icons";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
