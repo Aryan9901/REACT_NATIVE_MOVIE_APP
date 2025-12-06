@@ -19,6 +19,8 @@ interface Vendor {
   vendorCategories: any[];
   attributeValues: AttributeValueProps[];
   deliveryRadius: number;
+  viewOnly: boolean;
+  storeFront: boolean;
   address?: {
     latitude: number;
     longitude: number;
@@ -39,10 +41,7 @@ export default function VendorCard({ vendor, distance }: VendorCardProps) {
   const { location }: any = useLocationStore();
 
   // Check if vendor is showcase-only (profile view only, no shopping)
-  const isShowcaseOnly =
-    vendor?.attributeValues?.find(
-      (attr: AttributeValueProps) => attr?.name === "isShowcaseOnly"
-    )?.value === "true";
+  const isShowcaseOnly = !!vendor?.viewOnly && !vendor?.storeFront;
 
   const handlePress = () => {
     setSelectedVendor(vendor);
@@ -236,7 +235,7 @@ export default function VendorCard({ vendor, distance }: VendorCardProps) {
             </View>
 
             {/* Delivery Info */}
-            {deliveryInfo && (
+            {!isShowcaseOnly && deliveryInfo && (
               <View className="flex-row items-center">
                 <Ionicons name="bicycle" size={14} color="#10B981" />
                 <Text className="text-xs text-gray-600 ml-1">
