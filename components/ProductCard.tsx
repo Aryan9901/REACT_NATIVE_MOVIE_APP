@@ -354,18 +354,18 @@ export default function ProductCard({
                     )}
                   </TouchableOpacity>
                 ) : (
-                  <View className="flex-row w-24 h-7 ml-auto items-center justify-between bg-orange-100 border border-orange-600 rounded-full px-1">
+                  <View className="flex-row w-16 h-7 ml-auto items-center justify-between bg-orange-100 border border-orange-600 rounded-full px-1">
                     <TouchableOpacity
                       onPress={(e) => {
                         e.stopPropagation();
                         handleDecrement();
                       }}
-                      className="w-8 h-8 items-center justify-center"
+                      className="items-center justify-center"
                       activeOpacity={0.7}
                     >
                       <Ionicons name="remove" size={18} color="#ea580c" />
                     </TouchableOpacity>
-                    <Text className="text-orange-600 font-bold text-sm px-1">
+                    <Text className="text-orange-600 font-bold text-sm">
                       {quantityInCart}
                     </Text>
                     <TouchableOpacity
@@ -374,14 +374,10 @@ export default function ProductCard({
                         handleIncrement();
                       }}
                       disabled={isAdding}
-                      className="w-8 h-8 items-center justify-center"
+                      className="items-center justify-center"
                       activeOpacity={0.7}
                     >
-                      {isAdding ? (
-                        <ActivityIndicator size="small" color="#ea580c" />
-                      ) : (
-                        <Ionicons name="add" size={18} color="#ea580c" />
-                      )}
+                      <Ionicons name="add" size={18} color="#ea580c" />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -541,10 +537,10 @@ export default function ProductCard({
                           {variantQuantity === 0 ? (
                             <TouchableOpacity
                               onPress={handleModalAdd}
-                              className="bg-orange-100 w-16 h-6 py-0 border border-orange-600 rounded-full items-center justify-center"
+                              className="bg-orange-100 w-16 h-8 py-0 border border-orange-600 rounded-full items-center justify-center"
                               activeOpacity={0.7}
                             >
-                              <Text className="text-orange-600 text-xs font-bold">
+                              <Text className="text-orange-600 text-sm font-bold">
                                 ADD
                               </Text>
                             </TouchableOpacity>
@@ -552,7 +548,7 @@ export default function ProductCard({
                             <View className="flex-row w-24 h-9 items-center justify-between bg-orange-100 border border-orange-600 rounded-full px-1">
                               <TouchableOpacity
                                 onPress={handleModalDecrement}
-                                className="w-8 h-8 items-center justify-center"
+                                className=" items-center justify-center"
                                 activeOpacity={0.7}
                               >
                                 <Ionicons
@@ -561,12 +557,12 @@ export default function ProductCard({
                                   color="#ea580c"
                                 />
                               </TouchableOpacity>
-                              <Text className="text-orange-600 font-bold text-sm px-1">
+                              <Text className="text-orange-600 font-bold text-sm">
                                 {variantQuantity}
                               </Text>
                               <TouchableOpacity
                                 onPress={handleModalIncrement}
-                                className="w-8 h-8 items-center justify-center"
+                                className="items-center justify-center"
                                 activeOpacity={0.7}
                               >
                                 <Ionicons
