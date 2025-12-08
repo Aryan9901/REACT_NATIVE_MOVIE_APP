@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.aryan9901.biglocal'
+    namespace 'com.revvtch.biglocal'
     defaultConfig {
-        applicationId 'com.aryan9901.biglocal'
+        applicationId 'com.revvtch.biglocal'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

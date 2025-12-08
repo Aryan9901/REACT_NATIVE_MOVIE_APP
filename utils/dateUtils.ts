@@ -45,3 +45,34 @@ export const formatTime = (date: Date): string => {
 };
 
 export const getCurrentHour = (): number => new Date().getHours();
+
+// Check if a date is a weekly off day
+export const isWeeklyOffDay = (date: Date, weeklyOffDay: string): boolean => {
+  if (!weeklyOffDay) return false;
+  const daysOfWeek = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  const dayName = daysOfWeek[date.getDay()];
+  const offDays = weeklyOffDay
+    .split(";")
+    .map((day: string) => day.trim().toLowerCase());
+  return offDays.includes(dayName.toLowerCase());
+};
+
+// Get next available date (skipping weekly off days)
+export const getNextAvailableDate = (
+  startDate: Date,
+  weeklyOffDay: string
+): Date => {
+  const currentDate = new Date(startDate);
+  while (isWeeklyOffDay(currentDate, weeklyOffDay)) {
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  return currentDate;
+};

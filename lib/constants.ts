@@ -109,4 +109,9 @@ export const ORDER_ATTRIBUTE_KEYS = {
   PAYMENT_METHOD: "Payment Method",
   TABLE_NUMBER: "Table Number",
   CANCELLED_BY: "Cancelled By",
+  SERVICE_PICKUP_TIME: "Service Pickup Time",
+  IS_DINE_IN: "Is Dine In",
+  DELIVERY_SLOTS: "Delivery Slots",
+  SHOP_TIMING: "Shop Timing",
+  WEEKLY_OFF_DAY: "Weekly Off Day",
 };

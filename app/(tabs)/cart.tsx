@@ -3,7 +3,6 @@ import CalendarPicker from "@/components/cart/CalendarPicker";
 import CollectionSlots from "@/components/cart/CollectionSlots";
 import DeliveryOptions from "@/components/cart/DeliveryOptions";
 import DeliverySlots from "@/components/cart/DeliverySlots";
-import OrderConfirmationModal from "@/components/cart/OrderConfirmationModal";
 import PaymentMethod from "@/components/cart/PaymentMethod";
 import ShopTimings from "@/components/cart/ShopTimings";
 import SlotSelectionWarningModal from "@/components/cart/SlotSelectionWarningModal";
@@ -65,6 +64,7 @@ interface VendorConfig {
   deliveryLabel?: string;
   pickupLabel?: string;
   isTableRequired?: boolean;
+  weeklyOffDay?: string;
 }
 
 export default function CartPage() {
@@ -78,8 +78,17 @@ export default function CartPage() {
     updateCartQuantity,
     clearCart,
   } = useStoreStore();
-  const { user, isAuthenticated, setShowAuthModal, showAuthModal } =
-    useAuthStore();
+  const {
+    user,
+    isAuthenticated,
+    setShowAuthModal,
+    showAuthModal,
+    isCartCheckout,
+    setIsCartCheckout,
+    setCartCheckoutData,
+    orderData,
+    setOrderData,
+  } = useAuthStore();
 
   const [vendorData, setVendorData] = useState<any>(null);
   const [deliveryOption, setDeliveryOption] = useState<string>("Home Delivery");
@@ -109,13 +118,9 @@ export default function CartPage() {
   const [showVendorChangeModal, setShowVendorChangeModal] =
     useState<boolean>(false);
   const [pendingAddress, setPendingAddress] = useState<any>(null);
-  const [showOrderConfirmation, setShowOrderConfirmation] =
-    useState<boolean>(false);
-  const [orderConfirmationData, setOrderConfirmationData] = useState<any>(null);
   const [tableNo, setTableNo] = useState<number | undefined>(undefined);
   const [isTableRequired, setIsTableRequired] = useState<boolean>(false);
   const [showTableNoError, setShowTableNoError] = useState<boolean>(false);
-  const [pendingOrderPayload, setPendingOrderPayload] = useState<any>(null);
 
   const handleIncrement = (variantId: string, currentQuantity: number) => {
     if (currentQuantity >= 9) return;
@@ -283,6 +288,56 @@ export default function CartPage() {
     return isOpenDuringOperatingHours && !isDuringBreak;
   }, [vendorConfig.shopTiming, vendorConfig.offHours]);
 
+  // Check if Dine In is available (not during break time or weekly off)
+  const isDineInAvailable = useMemo(() => {
+    const isDineIn = vendorConfig?.pickupLabel === "Dine In" || isTableRequired;
+    if (!isDineIn) return true;
+
+    const now = new Date();
+    const daysOfWeek = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const todayName = daysOfWeek[now.getDay()];
+    const weeklyOffDay = vendorConfig?.weeklyOffDay || "";
+    const offDays = weeklyOffDay
+      .split(";")
+      .map((day: string) => day.trim().toLowerCase());
+
+    // Check if today is weekly off
+    if (offDays.includes(todayName.toLowerCase())) {
+      return false;
+    }
+
+    // Check if current time is in break time
+    const offHours = vendorConfig?.offHours;
+    if (offHours?.start && offHours?.end) {
+      const currentTime = now.getHours() + now.getMinutes() / 60;
+      const [offStartHour] = offHours.start.split(":").map(Number);
+      const offHoursStart =
+        offStartHour + Number(offHours.start.split(":")[1]) / 60;
+      const [offEndHour] = offHours.end.split(":").map(Number);
+      const offHoursEnd = offEndHour + Number(offHours.end.split(":")[1]) / 60;
+      const isDuringBreak =
+        currentTime >= offHoursStart && currentTime < offHoursEnd;
+      if (isDuringBreak) {
+        return false;
+      }
+    }
+
+    return true;
+  }, [
+    vendorConfig?.pickupLabel,
+    isTableRequired,
+    vendorConfig?.weeklyOffDay,
+    vendorConfig?.offHours,
+  ]);
+
   // Load user and vendor data
   useEffect(() => {
     const loadData = async () => {
@@ -336,8 +391,35 @@ export default function CartPage() {
     }
   }, [deliveryOption, vendorConfig?.isTableRequired]);
 
+  // Switch to Home Delivery if Dine In becomes unavailable
+  useEffect(() => {
+    const isDineIn = vendorConfig?.pickupLabel === "Dine In" || isTableRequired;
+    if (isDineIn && !isDineInAvailable && deliveryOption === "Self Pickup") {
+      if (vendorConfig.productDeliveryType === "Both") {
+        setDeliveryOption("Home Delivery");
+        Alert.alert(
+          "Dine In Unavailable",
+          "Dine In is currently unavailable. Switched to Home Delivery."
+        );
+      }
+    }
+  }, [
+    isDineInAvailable,
+    deliveryOption,
+    vendorConfig?.pickupLabel,
+    isTableRequired,
+    vendorConfig.productDeliveryType,
+  ]);
+
   // Check if vendor has service collection
   const hasServiceCollection = !!vendorConfig?.deliverySlots?.service;
+
+  // Force Home Delivery for service collection vendors
+  useEffect(() => {
+    if (hasServiceCollection && deliveryOption !== "Home Delivery") {
+      setDeliveryOption("Home Delivery");
+    }
+  }, [hasServiceCollection, deliveryOption]);
 
   // Calculate delivery info
   const deliveryInfo: any = useMemo(() => {
@@ -374,12 +456,18 @@ export default function CartPage() {
         const maxDeliveryDate = new Date(
           todayForMax.setDate(todayForMax.getDate() + max)
         );
-        const message = `Between ${formatShortDate(
-          minDeliveryDate
-        )} - ${formatShortDate(maxDeliveryDate)}`;
+        // For service collection, show "X - Y days after pickup" message
+        const message =
+          serviceSlotsLength > 0
+            ? `${vendorConfig?.minDays || 0} - ${
+                vendorConfig?.maxDays || 0
+              } days after pickup`
+            : `Between ${formatShortDate(minDeliveryDate)} - ${formatShortDate(
+                maxDeliveryDate
+              )}`;
         return {
           type: "days",
-          isService: false,
+          isService: serviceSlotsLength > 0,
           standard: { message, displayMessage: message },
           shopTiming: vendorConfig.shopTiming,
           offHours: vendorConfig.offHours,
@@ -388,6 +476,36 @@ export default function CartPage() {
 
       if (method === "by hour") {
         const now = new Date();
+        const weeklyOffDay = vendorConfig?.weeklyOffDay || "";
+
+        // Helper function to check if a date is a weekly off day
+        const checkWeeklyOffDayForHour = (date: Date): boolean => {
+          if (!weeklyOffDay) return false;
+          const daysOfWeek = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ];
+          const dayName = daysOfWeek[date.getDay()];
+          const offDays = weeklyOffDay
+            .split(";")
+            .map((day: string) => day.trim().toLowerCase());
+          return offDays.includes(dayName.toLowerCase());
+        };
+
+        // Helper function to get next available date (skipping weekly off days)
+        const getNextAvailableDateForHour = (startDate: Date): Date => {
+          const currentDate = new Date(startDate);
+          while (checkWeeklyOffDayForHour(currentDate)) {
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          return currentDate;
+        };
+
         const [closingHour, closingMinute] = (
           vendorConfig.shopTiming?.end || "21:00"
         )
@@ -399,10 +517,14 @@ export default function CartPage() {
           .split(":")
           .map(Number);
 
-        const openingTime = new Date(now);
+        // Get the next available date (skip weekly off days)
+        const availableDate = getNextAvailableDateForHour(now);
+        const isNextDay = availableDate.getDate() !== now.getDate();
+
+        const openingTime = new Date(availableDate);
         openingTime.setHours(openingHour, openingMinute, 0, 0);
 
-        const closingTime = new Date(now);
+        const closingTime = new Date(availableDate);
         closingTime.setHours(closingHour, closingMinute, 0, 0);
 
         if (closingHour < openingHour) {
@@ -412,26 +534,35 @@ export default function CartPage() {
         }
 
         const prepHours = Number.parseFloat(preparationTime?.product || "0");
-        let startTimeWindow;
-        let endTimeWindow;
+        let startTimeWindow: Date;
+        let endTimeWindow: Date;
 
-        if (prepHours === 0.5) {
-          startTimeWindow = new Date(now);
-          startTimeWindow.setSeconds(0, 0);
-          endTimeWindow = new Date(now.getTime() + 30 * 60 * 1000);
-          endTimeWindow.setSeconds(0, 0);
-        } else {
-          startTimeWindow = new Date(now);
-          if (
-            startTimeWindow.getMinutes() > 0 ||
-            startTimeWindow.getSeconds() > 0 ||
-            startTimeWindow.getMilliseconds() > 0
-          ) {
-            startTimeWindow.setHours(startTimeWindow.getHours() + 1, 0, 0, 0);
-          }
+        // If today is a holiday, start from next available day's opening time
+        if (isNextDay) {
+          startTimeWindow = new Date(openingTime);
           endTimeWindow = new Date(
             startTimeWindow.getTime() + prepHours * 60 * 60 * 1000
           );
+        } else {
+          // Handle 0.5 hour (30 minutes) preparation time
+          if (prepHours === 0.5) {
+            startTimeWindow = new Date(now);
+            startTimeWindow.setSeconds(0, 0);
+            endTimeWindow = new Date(now.getTime() + 30 * 60 * 1000);
+            endTimeWindow.setSeconds(0, 0);
+          } else {
+            startTimeWindow = new Date(now);
+            if (
+              startTimeWindow.getMinutes() > 0 ||
+              startTimeWindow.getSeconds() > 0 ||
+              startTimeWindow.getMilliseconds() > 0
+            ) {
+              startTimeWindow.setHours(startTimeWindow.getHours() + 1, 0, 0, 0);
+            }
+            endTimeWindow = new Date(
+              startTimeWindow.getTime() + prepHours * 60 * 60 * 1000
+            );
+          }
         }
 
         if (startTimeWindow < openingTime) {
@@ -453,9 +584,14 @@ export default function CartPage() {
         }
 
         if (startTimeWindow >= closingTime || endTimeWindow >= closingTime) {
-          const nextOpeningTime = new Date(openingTime);
+          let nextOpeningTime = new Date(openingTime);
           if (nextOpeningTime <= now)
             nextOpeningTime.setDate(nextOpeningTime.getDate() + 1);
+
+          // Skip weekly off days for next day delivery
+          nextOpeningTime = getNextAvailableDateForHour(nextOpeningTime);
+          nextOpeningTime.setHours(openingHour, openingMinute, 0, 0);
+
           const deliveryDate = new Date(
             nextOpeningTime.getTime() + prepHours * 60 * 60 * 1000
           );
@@ -490,10 +626,10 @@ export default function CartPage() {
         const message = `${formatTime(startTimeWindow)} - ${formatTime(
           finalEndTime
         )}`;
-        const displayMessage = `${message}, ${formatShortDate(now)}`;
+        const displayMessage = `${message}, ${formatShortDate(availableDate)}`;
         return {
           type: "hour",
-          standard: { message, displayMessage, date: now },
+          standard: { message, displayMessage, date: availableDate },
           shopTiming: vendorConfig.shopTiming,
           offHours: vendorConfig.offHours,
         };
@@ -504,6 +640,44 @@ export default function CartPage() {
       const { start: startTimeStr, end: endTimeStr } =
         vendorConfig.shopTiming || {};
       if (!startTimeStr || !endTimeStr) return { type: "none", slots: [] };
+
+      const weeklyOffDay = vendorConfig?.weeklyOffDay || "";
+
+      // Helper function to check if a date is a weekly off day
+      const checkWeeklyOffDay = (date: Date): boolean => {
+        if (!weeklyOffDay) return false;
+        const daysOfWeek = [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ];
+        const dayName = daysOfWeek[date.getDay()];
+        const offDays = weeklyOffDay
+          .split(";")
+          .map((day: string) => day.trim().toLowerCase());
+        return offDays.includes(dayName.toLowerCase());
+      };
+
+      // Check if selected date is a weekly off day
+      const isSelectedDateOffDay = checkWeeklyOffDay(selectedDate);
+
+      // If selected date is a weekly off day, return no slots
+      if (isSelectedDateOffDay) {
+        return {
+          type: "slots",
+          isService: hasServiceCollection,
+          slots: [],
+          title: "Schedule Pickup",
+          shopTiming: vendorConfig.shopTiming,
+          offHours: vendorConfig.offHours,
+          noSlotsAvailableToday: true,
+          isWeeklyOff: true,
+        };
+      }
 
       const [startHour] = startTimeStr.split(":").map(Number);
       const [endHour] = endTimeStr.split(":").map(Number);
@@ -557,6 +731,39 @@ export default function CartPage() {
       return null;
     }
 
+    const weeklyOffDay = vendorConfig?.weeklyOffDay || "";
+
+    // Helper function to check if a date is a weekly off day
+    const checkWeeklyOffDay = (date: Date): boolean => {
+      if (!weeklyOffDay) return false;
+      const daysOfWeek = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      const dayName = daysOfWeek[date.getDay()];
+      const offDays = weeklyOffDay
+        .split(";")
+        .map((day: string) => day.trim().toLowerCase());
+      return offDays.includes(dayName.toLowerCase());
+    };
+
+    // Check if selected collection date is a weekly off day
+    const isSelectedDateOffDay = checkWeeklyOffDay(selectedCollectionDate);
+
+    // If selected date is a weekly off day, return no slots
+    if (isSelectedDateOffDay) {
+      return {
+        slots: [],
+        title: "Schedule Collection",
+        isWeeklyOff: true,
+      };
+    }
+
     const deliverySlots = vendorConfig.deliverySlots?.service || [];
     const availableSlots =
       formatDate(selectedCollectionDate) === "Today"
@@ -582,7 +789,8 @@ export default function CartPage() {
     hasServiceCollection,
   ]);
 
-  const handlePlaceOrder = async () => {
+  // Validate order before placement
+  const validateOrderBeforePlacement = () => {
     const isCombinedPickup =
       deliveryOption === "Self Pickup" && hasServiceCollection;
     const isMembership = deliveryInfo.type === "membership";
@@ -590,7 +798,7 @@ export default function CartPage() {
     // Check table number first if required
     if (isTableRequired && !tableNo) {
       setShowTableNoError(true);
-      return;
+      return { isValid: false };
     }
 
     // Check for self pickup slot selection (skip for Dine In)
@@ -600,16 +808,18 @@ export default function CartPage() {
       !selectedSlot &&
       vendorConfig?.pickupLabel !== "Dine In"
     ) {
-      setSlotWarningMessage("Please select a pickup time slot to continue.");
-      setShowSlotWarningModal(true);
-      return;
+      return {
+        isValid: false,
+        message: "Please select a pickup time slot to continue.",
+      };
     }
 
     if (isCombinedPickup) {
       if (!selectedCollectionSlot) {
-        setSlotWarningMessage("Please select a collection time slot.");
-        setShowSlotWarningModal(true);
-        return;
+        return {
+          isValid: false,
+          message: "Please select a collection time slot.",
+        };
       }
     } else {
       if (
@@ -618,9 +828,10 @@ export default function CartPage() {
         !selectedSlot &&
         deliveryInfo.type === "slots"
       ) {
-        setSlotWarningMessage("Please select a delivery time slot.");
-        setShowSlotWarningModal(true);
-        return;
+        return {
+          isValid: false,
+          message: "Please select a delivery time slot.",
+        };
       }
       if (
         !isMembership &&
@@ -628,9 +839,10 @@ export default function CartPage() {
         !selectedCollectionSlot &&
         vendorConfig?.pickupLabel !== "Dine In"
       ) {
-        setSlotWarningMessage("Please select a collection time slot.");
-        setShowSlotWarningModal(true);
-        return;
+        return {
+          isValid: false,
+          message: "Please select a collection time slot.",
+        };
       }
     }
 
@@ -641,57 +853,86 @@ export default function CartPage() {
           2
         )} more to place the order.`
       );
+      return { isValid: false };
+    }
+
+    return { isValid: true };
+  };
+
+  const handlePlaceOrder = async () => {
+    const isCombinedPickup =
+      deliveryOption === "Self Pickup" && hasServiceCollection;
+    const isMembership = deliveryInfo.type === "membership";
+    const isSelfPickup = deliveryOption === "Self Pickup";
+
+    // Validate order
+    const validation = validateOrderBeforePlacement();
+    if (!validation.isValid) {
+      if (validation.message) {
+        setSlotWarningMessage(validation.message);
+        setShowSlotWarningModal(true);
+      }
       return;
     }
 
     // Check if user is authenticated first
     if (!user?.id) {
-      // For Home Delivery: Skip address check, authenticate first
-      // For Self Pickup: Build and save order payload
-      if (deliveryOption === "Self Pickup") {
-        // Build delivery and collection time strings
-        let deliveryTime = "";
-        let collectionTime = "";
+      // Build delivery and collection time strings
+      let deliveryTime = "";
+      let collectionTime = "";
 
-        if (!isMembership) {
-          deliveryTime = buildDeliveryTimeString(
-            deliveryInfo,
-            selectedSlot,
-            selectedDate
+      if (!isMembership) {
+        deliveryTime = buildDeliveryTimeString(
+          deliveryInfo,
+          selectedSlot,
+          selectedDate
+        );
+
+        if (hasServiceCollection && selectedCollectionSlot) {
+          collectionTime = buildCollectionTimeString(
+            selectedCollectionSlot,
+            selectedCollectionDate
           );
-
-          if (hasServiceCollection && selectedCollectionSlot) {
-            collectionTime = buildCollectionTimeString(
-              selectedCollectionSlot,
-              selectedCollectionDate
-            );
-          }
         }
-
-        // Build order payload for Self Pickup
-        const orderPayload = buildOrderPayload({
-          totalMrp,
-          totalSavings,
-          grandTotal,
-          vendorData,
-          deliveryAddress: null,
-          notes,
-          cart,
-          deliveryMethod: deliveryOption,
-          deliveryCharge,
-          deliveryTime,
-          hasServiceCollection,
-          collectionTime,
-          paymentMethod,
-          tableNo,
-          isMembership,
-        });
-
-        setPendingOrderPayload(orderPayload);
-      } else {
-        // Home Delivery: Don't save payload, user will place order after auth
-        setPendingOrderPayload(null);
       }
+
+      // Determine if it's a dine-in order
+      const isDineIn =
+        deliveryOption === "Self Pickup" &&
+        vendorConfig?.pickupLabel === "Dine In";
+
+      // Build order payload
+      const orderPayload = buildOrderPayload({
+        totalMrp,
+        totalSavings,
+        grandTotal,
+        vendorData,
+        deliveryAddress: isSelfPickup ? null : selectedAddress,
+        notes,
+        cart,
+        deliveryMethod: deliveryOption,
+        deliveryCharge,
+        deliveryTime,
+        hasServiceCollection,
+        collectionTime,
+        paymentMethod,
+        tableNo,
+        isMembership,
+        isDineIn,
+        vendorConfig,
+      });
+
+      // Set cart checkout data for auth modal
+      setIsCartCheckout(true);
+      setCartCheckoutData({
+        orderPayload,
+        deliveryOption,
+        grandTotal,
+        vendorData,
+        paymentMethod,
+        allowedPaymentMethods,
+      });
+
       setShowAuthModal(true);
       return;
     }
@@ -722,6 +963,11 @@ export default function CartPage() {
       }
     }
 
+    // Determine if it's a dine-in order
+    const isDineIn =
+      deliveryOption === "Self Pickup" &&
+      vendorConfig?.pickupLabel === "Dine In";
+
     // Build order payload
     const orderPayload = buildOrderPayload({
       totalMrp,
@@ -740,6 +986,8 @@ export default function CartPage() {
       paymentMethod,
       tableNo,
       isMembership,
+      isDineIn,
+      vendorConfig,
     });
 
     // User is authenticated, proceed with order placement
@@ -781,20 +1029,21 @@ export default function CartPage() {
           (attr: any) => attr.name === ORDER_ATTRIBUTE_KEYS.DELIVERY_TIME
         )?.value || "As per schedule";
 
-      // Show order confirmation modal
-      setOrderConfirmationData({
-        orderId: response.data?.id || response.data?.orderId || "N/A",
-        total: `₹${grandTotal.toFixed(2)}`,
-        estimatedDelivery: deliveryTime,
-        vendorName: vendorData?.shopName || vendorData?.name || "Vendor",
-        vendorContact: vendorData?.contactNo || "",
-        vendorAlternateContact: vendorData?.alternateContactNo || "",
-        paymentStatus:
-          paymentMethod === PAYMENT_MODE.PREPAID ? "Paid" : "Pay on Delivery",
-      });
+      // Clear cart and navigate to order confirmation page
+      clearCart();
       setIsPlacingOrder(false);
-      setShowOrderConfirmation(true);
-      // Don't clear cart here - let user see confirmation first
+      router.replace({
+        pathname: "/order-confirmation",
+        params: {
+          orderId: response.data?.id || response.data?.orderId || "N/A",
+          total: `₹${grandTotal.toFixed(2)}`,
+          estimatedDelivery: deliveryTime,
+          vendorName: vendorData?.shopName || vendorData?.name || "Vendor",
+          vendorContact: vendorData?.contactNo || "",
+          paymentStatus:
+            paymentMethod === PAYMENT_MODE.PREPAID ? "Paid" : "Pay on Delivery",
+        },
+      });
     } catch (error: any) {
       console.error("Error placing order:", error);
       console.error("Error response:", error?.response?.data);
@@ -812,17 +1061,26 @@ export default function CartPage() {
     }
   };
 
-  // Watch for authentication changes and place order if pending
+  // Listen for order confirmation from AuthModal (for Self Pickup guest flow)
   useEffect(() => {
-    const placeOrderAfterAuth = async () => {
-      if (user && pendingOrderPayload) {
-        await placeOrderWithPayload(pendingOrderPayload);
-        setPendingOrderPayload(null);
-      }
-    };
-
-    placeOrderAfterAuth();
-  }, [user, pendingOrderPayload]);
+    if (orderData) {
+      // Clear cart and navigate to order confirmation page
+      clearCart();
+      router.replace({
+        pathname: "/order-confirmation",
+        params: {
+          orderId: orderData.orderId || "N/A",
+          total: orderData.total,
+          estimatedDelivery: orderData.estimatedDelivery || "",
+          vendorName: orderData.vendorName || "Vendor",
+          vendorContact: orderData.vendorContact || "",
+          paymentStatus: orderData.paymentStatus || "Pay on Delivery",
+        },
+      });
+      // Clear the order data from store
+      setOrderData(null);
+    }
+  }, [orderData, setOrderData, clearCart, router]);
 
   const handleRazorpayPayment = async (
     orderPayload: any,
@@ -917,28 +1175,28 @@ export default function CartPage() {
             );
 
             if (verifyResponse.data) {
+              // Clear cart and navigate to order confirmation page
+              clearCart();
               setIsPlacingOrder(false);
-
-              setOrderConfirmationData({
-                orderId:
-                  verifyResponse.data?.id ||
-                  verifyResponse.data?.orderId ||
-                  "N/A",
-                total: `₹${grandTotal.toFixed(2)}`,
-                estimatedDelivery:
-                  orderPayload.attributeModels.find(
-                    (attr: any) =>
-                      attr.name === ORDER_ATTRIBUTE_KEYS.DELIVERY_TIME
-                  )?.value || "",
-                vendorName:
-                  vendorData?.shopName || vendorData?.name || "Vendor",
-                vendorContact: vendorData?.contactNo || "",
-                vendorAlternateContact: vendorData?.alternateContactNo || "",
-                paymentStatus: "Paid",
+              router.replace({
+                pathname: "/order-confirmation",
+                params: {
+                  orderId:
+                    verifyResponse.data?.id ||
+                    verifyResponse.data?.orderId ||
+                    "N/A",
+                  total: `₹${grandTotal.toFixed(2)}`,
+                  estimatedDelivery:
+                    orderPayload.attributeModels.find(
+                      (attr: any) =>
+                        attr.name === ORDER_ATTRIBUTE_KEYS.DELIVERY_TIME
+                    )?.value || "",
+                  vendorName:
+                    vendorData?.shopName || vendorData?.name || "Vendor",
+                  vendorContact: vendorData?.contactNo || "",
+                  paymentStatus: "Paid",
+                },
               });
-              setIsPlacingOrder(false);
-              setShowOrderConfirmation(true);
-              // Don't clear cart or navigate here - let user see confirmation first
             }
           } catch (error) {
             console.error("Payment verification error:", error);
@@ -967,7 +1225,7 @@ export default function CartPage() {
     }
   }, [deliveryInfo]);
 
-  // Auto-select tomorrow if no slots available today for self pickup
+  // Auto-select next available date if no slots available today for self pickup (including weekly off days)
   useEffect(() => {
     if (
       deliveryOption === "Self Pickup" &&
@@ -975,11 +1233,34 @@ export default function CartPage() {
       deliveryInfo.noSlotsAvailableToday &&
       formatDate(selectedDate) === "Today"
     ) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      setSelectedDate(tomorrow);
+      // Find next available non-weekly-off date
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const weeklyOffDay = vendorConfig?.weeklyOffDay || "";
+      if (weeklyOffDay) {
+        const daysOfWeek = [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ];
+        const offDays = weeklyOffDay
+          .split(";")
+          .map((day: string) => day.trim().toLowerCase());
+
+        // Skip weekly off days
+        while (offDays.includes(daysOfWeek[nextDate.getDay()].toLowerCase())) {
+          nextDate.setDate(nextDate.getDate() + 1);
+        }
+      }
+
+      setSelectedDate(nextDate);
     }
-  }, [deliveryInfo, deliveryOption, selectedDate]);
+  }, [deliveryInfo, deliveryOption, selectedDate, vendorConfig?.weeklyOffDay]);
 
   // Validate address change
   const handleAddressValidation = async (newAddress: any): Promise<boolean> => {
@@ -1083,12 +1364,30 @@ export default function CartPage() {
         />
         <View className="px-2 mb-2">
           <View className="bg-white shadow-lg rounded-md">
-            {/* Delivery Options */}
+            {/* Dine In Unavailable Warning */}
+            {!isDineInAvailable &&
+              (vendorConfig?.pickupLabel === "Dine In" || isTableRequired) && (
+                <View className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mx-3 mt-3 rounded-r-md">
+                  <Text className="text-sm text-yellow-800">
+                    <Text className="font-medium">Dine In Unavailable: </Text>
+                    The shop is currently closed.
+                  </Text>
+                </View>
+              )}
+
+            {/* Delivery Options - Hide for service collection (always Home Delivery) */}
             <DeliveryOptions
               deliveryOption={deliveryOption}
               onDeliveryOptionChange={setDeliveryOption}
-              showOptions={vendorConfig.productDeliveryType === "Both"}
+              showOptions={
+                vendorConfig.productDeliveryType === "Both" &&
+                !hasServiceCollection
+              }
               vendorConfig={vendorConfig}
+              isDineInDisabled={
+                !isDineInAvailable &&
+                (vendorConfig?.pickupLabel === "Dine In" || isTableRequired)
+              }
             />
 
             {/* Delivery Slots */}
@@ -1108,6 +1407,8 @@ export default function CartPage() {
                   onCalendarOpen={() => setIsCalendarOpen(true)}
                   formatDate={formatDate}
                   formatFullDate={formatFullDate}
+                  weeklyOffDay={vendorConfig?.weeklyOffDay || ""}
+                  vendorConfig={vendorConfig}
                 />
               )}
 
@@ -1127,7 +1428,21 @@ export default function CartPage() {
                   onCalendarOpen={() => setIsCalendarOpen(true)}
                   formatDate={formatDate}
                   formatFullDate={formatFullDate}
+                  weeklyOffDay={vendorConfig?.weeklyOffDay || ""}
                 />
+              )}
+
+            {/* Delivery Time After Pickup - For Service Collection */}
+            {collectionInfo &&
+              deliveryInfo?.type !== "membership" &&
+              hasServiceCollection && (
+                <View className="bg-white rounded-lg mx-4 mb-3 py-3 px-4 flex-row items-center justify-center">
+                  <Ionicons name="car-outline" size={20} color="#F97316" />
+                  <Text className="text-sm font-bold text-gray-800 ml-2">
+                    Deliver in {vendorConfig?.minDays || 0} -{" "}
+                    {vendorConfig?.maxDays || 0} days after pickup
+                  </Text>
+                </View>
               )}
           </View>
         </View>
@@ -1281,11 +1596,9 @@ export default function CartPage() {
         {/* Shop Timings */}
         {vendorConfig.shopTiming && (
           <ShopTimings
-            isShopOpen={isShopOpen}
-            isBreakTime={isBreakTime}
             shopTiming={vendorConfig.shopTiming}
             offHours={vendorConfig.offHours}
-            formatDisplayTime={formatDisplayTime}
+            vendorConfig={vendorConfig}
           />
         )}
 
@@ -1341,6 +1654,7 @@ export default function CartPage() {
             setIsCalendarOpen(false);
           }}
           selectedDate={selectedDate}
+          vendorConfig={vendorConfig}
         />
       )}
 
@@ -1365,39 +1679,6 @@ export default function CartPage() {
         }}
         vendorName={vendorData?.shopName || vendorData?.name || "This vendor"}
       />
-
-      {/* Order Confirmation Modal */}
-      {showOrderConfirmation && (
-        <OrderConfirmationModal
-          isOpen={showOrderConfirmation}
-          onClose={() => {
-            // User closes modal - clear cart and stay on cart page
-            clearCart();
-            setShowOrderConfirmation(false);
-            setOrderConfirmationData(null);
-          }}
-          orderId={orderConfirmationData.orderId}
-          total={orderConfirmationData.total}
-          estimatedDelivery={orderConfirmationData.estimatedDelivery}
-          vendorName={orderConfirmationData.vendorName}
-          vendorContact={orderConfirmationData.vendorContact}
-          paymentStatus={orderConfirmationData.paymentStatus}
-          onContinueShopping={() => {
-            // User clicks "Continue Shopping" - clear cart and go to store
-            clearCart();
-            setShowOrderConfirmation(false);
-            setOrderConfirmationData(null);
-            router.push("/store");
-          }}
-          onViewOrder={(orderId) => {
-            // User clicks "View Order" - clear cart and go to store (or order details)
-            clearCart();
-            setShowOrderConfirmation(false);
-            setOrderConfirmationData(null);
-            router.push("/store");
-          }}
-        />
-      )}
     </View>
   );
 }

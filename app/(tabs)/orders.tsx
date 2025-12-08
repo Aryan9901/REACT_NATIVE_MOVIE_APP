@@ -64,7 +64,7 @@ const EmptyState = ({
   </View>
 );
 
-const GuestSignInPrompt = () => {
+const GuestSignInPrompt = ({ onSignIn }: { onSignIn: () => void }) => {
   return (
     <View className="flex-1 items-center justify-center py-16 px-4">
       <View className="w-28 h-28 bg-orange-50 rounded-full items-center justify-center mb-6">
@@ -79,7 +79,7 @@ const GuestSignInPrompt = () => {
       <TouchableOpacity
         className="px-10 py-4 bg-orange-600 rounded-xl"
         activeOpacity={0.7}
-        onPress={() => console.log("Open login modal")}
+        onPress={onSignIn}
       >
         <Text className="text-white font-bold text-base">Sign In</Text>
       </TouchableOpacity>
@@ -144,7 +144,7 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
-  const { user, isGuestMode } = useAuthStore();
+  const { user, isGuestMode, setShowAuthModal } = useAuthStore();
   const router = useRouter();
 
   const fetchOrders = useCallback(async () => {
@@ -228,7 +228,7 @@ export default function OrdersPage() {
   if (isGuestMode) {
     return (
       <View className="flex-1 bg-gray-50">
-        <GuestSignInPrompt />
+        <GuestSignInPrompt onSignIn={() => setShowAuthModal(true)} />
       </View>
     );
   }

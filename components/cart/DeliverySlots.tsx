@@ -11,6 +11,8 @@ interface DeliverySlotsProps {
   onCalendarOpen: () => void;
   formatDate: (date: Date) => string;
   formatFullDate: (date: Date) => string;
+  weeklyOffDay?: string;
+  vendorConfig?: any;
 }
 
 const DeliverySlots = ({
@@ -23,8 +25,104 @@ const DeliverySlots = ({
   onCalendarOpen,
   formatDate,
   formatFullDate,
+  weeklyOffDay = "",
+  vendorConfig,
 }: DeliverySlotsProps) => {
   if (!deliveryInfo || deliveryInfo.type === "membership") return null;
+
+  // Helper function to check if a date is a weekly off day
+  const isWeeklyOffDay = (date: Date): boolean => {
+    if (!weeklyOffDay) return false;
+    const daysOfWeek = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const dayName = daysOfWeek[date.getDay()];
+    const offDays = weeklyOffDay
+      .split(";")
+      .map((day) => day.trim().toLowerCase());
+    return offDays.includes(dayName.toLowerCase());
+  };
+
+  // Helper function to check if a date is in break time
+  const isInBreakTime = (checkDate: Date): boolean => {
+    if (!vendorConfig?.offHours?.start || !vendorConfig?.offHours?.end)
+      return false;
+    const now = new Date();
+    // Only check break time for today
+    if (checkDate.toDateString() !== now.toDateString()) return false;
+
+    const currentTime = now.getHours() + now.getMinutes() / 60;
+    const [offStartHour] = vendorConfig.offHours.start.split(":").map(Number);
+    const offHoursStart =
+      offStartHour + Number(vendorConfig.offHours.start.split(":")[1]) / 60;
+    const [offEndHour] = vendorConfig.offHours.end.split(":").map(Number);
+    const offHoursEnd =
+      offEndHour + Number(vendorConfig.offHours.end.split(":")[1]) / 60;
+
+    return currentTime >= offHoursStart && currentTime < offHoursEnd;
+  };
+
+  // Helper function to get unavailability reason
+  const getUnavailableReason = (checkDate: Date): string | null => {
+    if (isWeeklyOffDay(checkDate)) return "closed";
+    if (isInBreakTime(checkDate)) return "closed";
+    return null;
+  };
+
+  // Helper function to get next available non-off day date
+  const getNextAvailableDate = (startDate: Date): Date => {
+    const currentDate = new Date(startDate);
+    while (isWeeklyOffDay(currentDate)) {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return currentDate;
+  };
+
+  const handleTodayClick = () => {
+    const today = getNextAvailableDate(new Date());
+    onDateChange(today);
+  };
+
+  const handleTomorrowClick = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const availableTomorrow = getNextAvailableDate(tomorrow);
+    onDateChange(availableTomorrow);
+  };
+
+  // Determine what to show on the second tab
+  const getSecondTabLabel = () => {
+    const selectedDateLabel = formatDate(selectedDate);
+    if (selectedDateLabel === "Today") {
+      return "Tomorrow";
+    } else if (selectedDateLabel === "Tomorrow") {
+      return "Tomorrow";
+    } else {
+      // Show the actual date (e.g., "Nov 30", "Dec 1")
+      const date = selectedDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      return date;
+    }
+  };
+
+  const isSecondTabActive = formatDate(selectedDate) !== "Today";
+
+  // Check today's unavailability
+  const today = new Date();
+  const todayReason = getUnavailableReason(today);
+
+  // Check tomorrow's unavailability
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowReason = getUnavailableReason(tomorrow);
 
   return (
     <View className="bg-white rounded-lg px-3 pb-6">
@@ -63,8 +161,8 @@ const DeliverySlots = ({
           {/* Date Selection */}
           <View className="flex-row gap-2 mb-4 bg-gray-200 rounded-lg p-1">
             <TouchableOpacity
-              onPress={() => onDateChange(new Date())}
-              className={`flex-1 py-2 rounded-lg ${
+              onPress={handleTodayClick}
+              className={`flex-1 py-2 rounded-lg items-center ${
                 formatDate(selectedDate) === "Today"
                   ? "bg-orange-500"
                   : "bg-transparent"
@@ -79,28 +177,36 @@ const DeliverySlots = ({
               >
                 Today
               </Text>
+              {todayReason && (
+                <Text
+                  className={`text-xs ${
+                    formatDate(selectedDate) === "Today"
+                      ? "text-white/80"
+                      : "text-gray-500"
+                  }`}
+                >
+                  ({todayReason})
+                </Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => {
-                const d = new Date();
-                d.setDate(d.getDate() + 1);
-                onDateChange(d);
-              }}
-              className={`flex-1 py-2 rounded-lg ${
-                formatDate(selectedDate) === "Tomorrow"
-                  ? "bg-orange-500"
-                  : "bg-transparent"
+              onPress={handleTomorrowClick}
+              className={`flex-1 py-2 rounded-lg items-center ${
+                isSecondTabActive ? "bg-orange-500" : "bg-transparent"
               }`}
             >
               <Text
                 className={`text-sm font-bold text-center ${
-                  formatDate(selectedDate) === "Tomorrow"
-                    ? "text-white"
-                    : "text-gray-600"
+                  isSecondTabActive ? "text-white" : "text-gray-600"
                 }`}
               >
-                Tomorrow
+                {getSecondTabLabel()}
               </Text>
+              {tomorrowReason && isSecondTabActive && (
+                <Text className="text-xs text-white/80">
+                  ({tomorrowReason})
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -128,7 +234,9 @@ const DeliverySlots = ({
               ))
             ) : (
               <Text className="text-sm text-gray-500 text-center w-full">
-                No available slots for {formatDate(selectedDate)}.
+                {deliveryInfo.isWeeklyOff
+                  ? "Shop is closed. Please select another date."
+                  : `No available slots for ${formatDate(selectedDate)}.`}
               </Text>
             )}
           </View>

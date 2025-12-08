@@ -6,14 +6,59 @@ interface CalendarPickerProps {
   onSelect: (date: Date) => void;
   onClose: () => void;
   selectedDate: Date;
+  vendorConfig?: any;
 }
 
 const CalendarPicker = ({
   onSelect,
   onClose,
   selectedDate,
+  vendorConfig,
 }: CalendarPickerProps) => {
   const [date, setDate] = useState(selectedDate || new Date());
+  const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
+
+  const isWeeklyOffDay = (checkDate: Date) => {
+    if (!vendorConfig?.weeklyOffDay) return false;
+    const daysOfWeek = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const dayName = daysOfWeek[checkDate.getDay()];
+    const offDays = vendorConfig.weeklyOffDay
+      .split(";")
+      .map((day: string) => day.trim().toLowerCase());
+    return offDays.includes(dayName.toLowerCase());
+  };
+
+  const isInBreakTime = (checkDate: Date) => {
+    if (!vendorConfig?.offHours?.start || !vendorConfig?.offHours?.end)
+      return false;
+    const now = new Date();
+    // Only check break time for today
+    if (checkDate.toDateString() !== now.toDateString()) return false;
+
+    const currentTime = now.getHours() + now.getMinutes() / 60;
+    const [offStartHour] = vendorConfig.offHours.start.split(":").map(Number);
+    const offHoursStart =
+      offStartHour + Number(vendorConfig.offHours.start.split(":")[1]) / 60;
+    const [offEndHour] = vendorConfig.offHours.end.split(":").map(Number);
+    const offHoursEnd =
+      offEndHour + Number(vendorConfig.offHours.end.split(":")[1]) / 60;
+
+    return currentTime >= offHoursStart && currentTime < offHoursEnd;
+  };
+
+  const getUnavailableReason = (checkDate: Date) => {
+    if (isWeeklyOffDay(checkDate)) return "Weekly Off";
+    if (isInBreakTime(checkDate)) return "Break Time";
+    return null;
+  };
 
   const handlePrevMonth = () =>
     setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1));
@@ -37,6 +82,14 @@ const CalendarPicker = ({
   const tempDate = new Date();
   const lastDate = new Date(tempDate.setDate(tempDate.getDate() + 6));
   today.setHours(0, 0, 0, 0);
+
+  // Check if today has an unavailable reason
+  const todayDate = new Date();
+  const todayReason = getUnavailableReason(todayDate);
+  const showTodayWarning =
+    todayReason &&
+    date.getMonth() === todayDate.getMonth() &&
+    date.getFullYear() === todayDate.getFullYear();
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -66,6 +119,15 @@ const CalendarPicker = ({
             </View>
           </View>
 
+          {/* Today Warning */}
+          {showTodayWarning && (
+            <View className="mb-3 px-2 py-1.5 bg-red-50 border border-red-200 rounded-md">
+              <Text className="text-xs text-red-700">
+                <Text className="font-semibold">Today:</Text> {todayReason}
+              </Text>
+            </View>
+          )}
+
           {/* Day Headers */}
           <View className="flex-row mb-2">
             {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
@@ -89,6 +151,9 @@ const CalendarPicker = ({
                 );
                 const isPast = dayDate < today;
                 const isFuture = dayDate >= lastDate;
+                const isWeeklyOff = isWeeklyOffDay(dayDate);
+                const isBreakTime = isInBreakTime(dayDate);
+                const isUnavailable = isWeeklyOff || isBreakTime;
                 const isSelected =
                   selectedDate &&
                   dayDate.toDateString() === selectedDate.toDateString();
@@ -96,11 +161,13 @@ const CalendarPicker = ({
                 return (
                   <View key={day} className="w-[14.28%] p-1">
                     <TouchableOpacity
-                      disabled={isPast || isFuture}
-                      onPress={() => onSelect(dayDate)}
+                      disabled={isPast || isFuture || isUnavailable}
+                      onPress={() => !isUnavailable && onSelect(dayDate)}
                       className={`aspect-square items-center justify-center rounded-full ${
                         isPast || isFuture
                           ? "bg-gray-100"
+                          : isUnavailable
+                          ? "bg-red-50"
                           : isSelected
                           ? "bg-green-600"
                           : "bg-white"
@@ -110,6 +177,8 @@ const CalendarPicker = ({
                         className={`text-sm ${
                           isPast || isFuture
                             ? "text-gray-300"
+                            : isUnavailable
+                            ? "text-red-400 line-through"
                             : isSelected
                             ? "text-white font-bold"
                             : "text-gray-900"

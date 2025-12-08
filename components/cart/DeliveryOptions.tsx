@@ -6,6 +6,8 @@ interface DeliveryOptionsProps {
   onDeliveryOptionChange: (option: string) => void;
   showOptions: boolean;
   vendorConfig?: any;
+  selectedSlot?: any;
+  isDineInDisabled?: boolean;
 }
 
 const DeliveryOptions = ({
@@ -13,6 +15,8 @@ const DeliveryOptions = ({
   onDeliveryOptionChange,
   showOptions,
   vendorConfig,
+  selectedSlot,
+  isDineInDisabled = false,
 }: DeliveryOptionsProps) => {
   if (!showOptions) return null;
 
@@ -59,36 +63,56 @@ const DeliveryOptions = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => onDeliveryOptionChange("Self Pickup")}
-          className="flex-1 flex-row items-center"
+          onPress={() =>
+            !isDineInDisabled && onDeliveryOptionChange("Self Pickup")
+          }
+          disabled={isDineInDisabled}
+          className={`flex-1 flex-row items-center ${
+            isDineInDisabled ? "opacity-50" : ""
+          }`}
           activeOpacity={0.7}
         >
           <View
             className={`w-6 h-6 rounded border-2 items-center justify-center mr-2 ${
-              deliveryOption === "Self Pickup"
+              isDineInDisabled
+                ? "border-gray-300 bg-gray-100"
+                : deliveryOption === "Self Pickup"
                 ? "border-green-700 bg-green-600"
                 : "border-gray-300 bg-white"
             }`}
           >
-            {deliveryOption === "Self Pickup" && (
+            {deliveryOption === "Self Pickup" && !isDineInDisabled && (
               <Ionicons name="checkmark" size={16} color="white" />
             )}
           </View>
           <Ionicons
             name="storefront"
             size={20}
-            color={deliveryOption === "Self Pickup" ? "green" : "#6B7280"}
+            color={
+              isDineInDisabled
+                ? "#9CA3AF"
+                : deliveryOption === "Self Pickup"
+                ? "green"
+                : "#6B7280"
+            }
             style={{ marginRight: 6 }}
           />
-          <Text
-            className={`${
-              deliveryOption === "Self Pickup"
-                ? "text-green-800 font-semibold"
-                : "text-gray-700 font-medium"
-            } `}
-          >
-            {pickupLabel}
-          </Text>
+          <View className="flex-row items-center">
+            <Text
+              className={`${
+                isDineInDisabled
+                  ? "text-gray-400 font-medium"
+                  : deliveryOption === "Self Pickup"
+                  ? "text-green-800 font-semibold"
+                  : "text-gray-700 font-medium"
+              } `}
+            >
+              {pickupLabel}
+            </Text>
+            {isDineInDisabled && (
+              <Text className="text-xs text-gray-400 ml-1">(Closed)</Text>
+            )}
+          </View>
         </TouchableOpacity>
       </View>
     </View>

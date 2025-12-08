@@ -24,6 +24,15 @@ interface User {
   }>;
 }
 
+interface CartCheckoutData {
+  orderPayload: any;
+  deliveryOption: string;
+  grandTotal: number;
+  vendorData: any;
+  paymentMethod: string;
+  allowedPaymentMethods?: string[];
+}
+
 interface AuthState {
   user: User | null;
   loading: boolean;
@@ -31,14 +40,26 @@ interface AuthState {
   isGuestMode: boolean;
   isAuthenticated: boolean;
 
+  // Cart checkout state for guest login flow
+  isCartCheckout: boolean;
+  cartCheckoutData: CartCheckoutData | null;
+  orderData: any;
+
   // Actions
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
   setShowAuthModal: (show: boolean) => void;
   setIsGuestMode: (isGuest: boolean) => void;
+  setIsCartCheckout: (isCartCheckout: boolean) => void;
+  setCartCheckoutData: (data: CartCheckoutData | null) => void;
+  setOrderData: (data: any) => void;
   loadUser: () => Promise<void>;
   initiateLogin: (mobile: string) => Promise<any>;
-  verifyOTP: (otp: string, mobile: string) => Promise<void>;
+  verifyOTP: (
+    otp: string,
+    mobile: string,
+    skipModalClose?: boolean
+  ) => Promise<User | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -49,11 +70,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   showAuthModal: false,
   isGuestMode: true,
   isAuthenticated: false,
+  isCartCheckout: false,
+  cartCheckoutData: null,
+  orderData: null,
 
   setUser: (user) => set({ user, isAuthenticated: !!user?.id }),
   setLoading: (loading) => set({ loading }),
   setShowAuthModal: (showAuthModal) => set({ showAuthModal }),
   setIsGuestMode: (isGuestMode) => set({ isGuestMode }),
+  setIsCartCheckout: (isCartCheckout) => set({ isCartCheckout }),
+  setCartCheckoutData: (cartCheckoutData) => set({ cartCheckoutData }),
+  setOrderData: (orderData) => set({ orderData }),
 
   loadUser: async () => {
     try {
@@ -96,7 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  verifyOTP: async (otp: string, mobile: string) => {
+  verifyOTP: async (otp: string, mobile: string, skipModalClose?: boolean) => {
     try {
       set({ loading: true });
       const authData = await AuthService.verifyOtp(otp, mobile);
@@ -127,7 +154,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       await AsyncStorage.removeItem(STORAGE_KEYS.GUEST_MODE);
 
-      set({ user: userData, isAuthenticated: true, showAuthModal: false });
+      set({
+        user: userData,
+        isAuthenticated: true,
+        showAuthModal: skipModalClose ? get().showAuthModal : false,
+        isGuestMode: false,
+      });
+
+      return userData;
     } catch (error: any) {
       console.error("Failed to verify OTP:", error);
       throw new Error(error.response?.data?.message || "Invalid OTP");

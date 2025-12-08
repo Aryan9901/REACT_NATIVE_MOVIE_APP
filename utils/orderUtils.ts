@@ -19,6 +19,8 @@ interface BuildOrderPayloadParams {
   paymentMethod: string;
   tableNo?: number;
   isMembership: boolean;
+  isDineIn?: boolean;
+  vendorConfig?: any;
 }
 
 export const buildOrderPayload = (params: BuildOrderPayloadParams) => {
@@ -38,6 +40,8 @@ export const buildOrderPayload = (params: BuildOrderPayloadParams) => {
     paymentMethod,
     tableNo,
     isMembership,
+    isDineIn = false,
+    vendorConfig,
   } = params;
 
   const cartItems = cart?.map((item) => {
@@ -99,13 +103,51 @@ export const buildOrderPayload = (params: BuildOrderPayloadParams) => {
       },
       { name: ORDER_ATTRIBUTE_KEYS.CANCELLED_ON, value: "" },
       ...(collectionTime
-        ? [{ name: "Service Pickup Time", value: collectionTime }]
+        ? [
+            {
+              name: ORDER_ATTRIBUTE_KEYS.SERVICE_PICKUP_TIME,
+              value: collectionTime,
+            },
+          ]
         : []),
       ...(deliveryMethod === "Self Pickup" && tableNo
         ? [
             {
               name: ORDER_ATTRIBUTE_KEYS.TABLE_NUMBER,
               value: tableNo.toString(),
+            },
+          ]
+        : []),
+      ...(isDineIn
+        ? [
+            {
+              name: ORDER_ATTRIBUTE_KEYS.IS_DINE_IN,
+              value: "true",
+            },
+          ]
+        : []),
+      // Store vendor configuration for future rescheduling
+      ...(vendorConfig?.deliverySlots
+        ? [
+            {
+              name: ORDER_ATTRIBUTE_KEYS.DELIVERY_SLOTS,
+              value: JSON.stringify(vendorConfig.deliverySlots),
+            },
+          ]
+        : []),
+      ...(vendorConfig?.shopTiming
+        ? [
+            {
+              name: ORDER_ATTRIBUTE_KEYS.SHOP_TIMING,
+              value: JSON.stringify(vendorConfig.shopTiming),
+            },
+          ]
+        : []),
+      ...(vendorConfig?.weeklyOffDay
+        ? [
+            {
+              name: ORDER_ATTRIBUTE_KEYS.WEEKLY_OFF_DAY,
+              value: vendorConfig.weeklyOffDay,
             },
           ]
         : []),

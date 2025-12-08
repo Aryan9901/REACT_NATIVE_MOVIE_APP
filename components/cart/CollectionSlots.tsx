@@ -10,6 +10,7 @@ interface CollectionSlotsProps {
   onCalendarOpen: () => void;
   formatDate: (date: Date) => string;
   formatFullDate: (date: Date) => string;
+  weeklyOffDay?: string;
 }
 
 const CollectionSlots = ({
@@ -21,8 +22,68 @@ const CollectionSlots = ({
   onCalendarOpen,
   formatDate,
   formatFullDate,
+  weeklyOffDay = "",
 }: CollectionSlotsProps) => {
   if (!collectionInfo) return null;
+
+  // Helper function to check if a date is a weekly off day
+  const isWeeklyOffDay = (date: Date): boolean => {
+    if (!weeklyOffDay) return false;
+    const daysOfWeek = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const dayName = daysOfWeek[date.getDay()];
+    const offDays = weeklyOffDay
+      .split(";")
+      .map((day) => day.trim().toLowerCase());
+    return offDays.includes(dayName.toLowerCase());
+  };
+
+  // Helper function to get next available non-off day date
+  const getNextAvailableDate = (startDate: Date): Date => {
+    const currentDate = new Date(startDate);
+    while (isWeeklyOffDay(currentDate)) {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return currentDate;
+  };
+
+  const handleTodayClick = () => {
+    const today = getNextAvailableDate(new Date());
+    onDateChange(today);
+  };
+
+  const handleTomorrowClick = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const availableTomorrow = getNextAvailableDate(tomorrow);
+    onDateChange(availableTomorrow);
+  };
+
+  // Determine what to show on the second tab
+  const getSecondTabLabel = () => {
+    const selectedDateLabel = formatDate(selectedCollectionDate);
+    if (selectedDateLabel === "Today") {
+      return "Tomorrow";
+    } else if (selectedDateLabel === "Tomorrow") {
+      return "Tomorrow";
+    } else {
+      // Show the actual date (e.g., "Nov 30", "Dec 1")
+      const date = selectedCollectionDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      return date;
+    }
+  };
+
+  const isSecondTabActive = formatDate(selectedCollectionDate) !== "Today";
 
   return (
     <View className="bg-white rounded-lg mx-4 mb-3 p-4">
@@ -36,7 +97,7 @@ const CollectionSlots = ({
       {/* Date Selection */}
       <View className="flex-row mb-4 bg-gray-300 rounded-lg">
         <TouchableOpacity
-          onPress={() => onDateChange(new Date())}
+          onPress={handleTodayClick}
           className={`flex-1 py-2 rounded-lg ${
             formatDate(selectedCollectionDate) === "Today"
               ? "bg-[#F77C06]"
@@ -55,58 +116,27 @@ const CollectionSlots = ({
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => {
-            const d = new Date();
-            d.setDate(d.getDate() + 1);
-            onDateChange(d);
-          }}
+          onPress={handleTomorrowClick}
           className={`flex-1 py-2 rounded-lg ${
-            formatDate(selectedCollectionDate) === "Tomorrow"
-              ? "bg-[#F77C06]"
-              : "bg-transparent"
+            isSecondTabActive ? "bg-[#F77C06]" : "bg-transparent"
           }`}
           activeOpacity={0.7}
         >
           <Text
             className={`text-sm font-bold text-center ${
-              formatDate(selectedCollectionDate) === "Tomorrow"
-                ? "text-white"
-                : "text-gray-600"
+              isSecondTabActive ? "text-white" : "text-gray-600"
             }`}
           >
-            Tomorrow
+            {getSecondTabLabel()}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onCalendarOpen}
-          className={`flex-1 py-2 rounded-lg flex-row items-center justify-center ${
-            formatDate(selectedCollectionDate) !== "Tomorrow" &&
-            formatDate(selectedCollectionDate) !== "Today"
-              ? "bg-[#F77C06]"
-              : "bg-transparent"
-          }`}
+          className="flex-1 py-2 rounded-lg flex-row items-center justify-center bg-transparent"
           activeOpacity={0.7}
         >
-          <Ionicons
-            name="calendar-outline"
-            size={16}
-            color={
-              formatDate(selectedCollectionDate) !== "Tomorrow" &&
-              formatDate(selectedCollectionDate) !== "Today"
-                ? "#fff"
-                : "#4B5563"
-            }
-          />
-          <Text
-            className={`text-sm font-bold ml-1 ${
-              formatDate(selectedCollectionDate) !== "Tomorrow" &&
-              formatDate(selectedCollectionDate) !== "Today"
-                ? "text-white"
-                : "text-gray-600"
-            }`}
-          >
-            Later
-          </Text>
+          <Ionicons name="calendar-outline" size={16} color="#4B5563" />
+          <Text className="text-sm font-bold ml-1 text-gray-600">Later</Text>
         </TouchableOpacity>
       </View>
 
@@ -138,7 +168,11 @@ const CollectionSlots = ({
           ))
         ) : (
           <Text className="text-sm text-gray-500 text-center w-full">
-            No available slots for {formatDate(selectedCollectionDate)}.
+            {collectionInfo.isWeeklyOff
+              ? `Shop is closed on ${formatDate(
+                  selectedCollectionDate
+                )} (Weekly Off). Please select another date.`
+              : `No available slots for ${formatDate(selectedCollectionDate)}.`}
           </Text>
         )}
       </View>

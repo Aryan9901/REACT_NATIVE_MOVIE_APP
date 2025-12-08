@@ -1,4 +1,4 @@
-import AuthModal from "@/components/AuthModal";
+import AuthCartModal from "@/components/AuthCartModal";
 import Header from "@/components/Header";
 import StoreInitializer from "@/components/StoreInitializer";
 import { Stack } from "expo-router";
@@ -53,8 +53,12 @@ export default function RootLayout() {
               name="profile/edit"
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="order-confirmation"
+              options={{ headerShown: false }}
+            />
           </Stack>
-          <AuthModal />
+          <AuthCartModal />
         </KeyboardProvider>
       </ToastProvider>
     </SafeAreaProvider>

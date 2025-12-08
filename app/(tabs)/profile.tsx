@@ -30,7 +30,8 @@ interface MenuItem {
 
 const Profile = () => {
   const router = useRouter();
-  const { isGuestMode, user, refreshUser, logout } = useAuthStore();
+  const { isGuestMode, user, refreshUser, logout, setShowAuthModal } =
+    useAuthStore();
 
   const handleRefresh = async () => {
     try {
@@ -219,7 +220,7 @@ const Profile = () => {
               Browsing as guest
             </Text>
             <TouchableOpacity
-              onPress={() => console.log("Open login")}
+              onPress={() => setShowAuthModal(true)}
               className="mt-4 bg-orange-600 px-8 py-3 rounded-lg"
             >
               <Text className="text-white font-semibold text-base">
