@@ -6,17 +6,8 @@ import {
   Ionicons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { router } from "expo-router";
 import { Alert, Linking, Text, TouchableOpacity, View } from "react-native";
-
-// Mock data - replace with real data later
-const getMockUser = () => ({
-  name: "Valued Customer",
-  email: "customer@example.com",
-  phone: "+91 98765 43210",
-});
-
-const getMockIsGuest = () => false;
 
 interface MenuItem {
   icon: any;
@@ -29,9 +20,16 @@ interface MenuItem {
 }
 
 const Profile = () => {
-  const router = useRouter();
   const { isGuestMode, user, refreshUser, logout, setShowAuthModal } =
     useAuthStore();
+
+  const navigateTo = (route: string) => {
+    try {
+      router.push(route as any);
+    } catch (error) {
+      console.error("Navigation error:", error);
+    }
+  };
 
   const handleRefresh = async () => {
     try {
@@ -179,7 +177,7 @@ const Profile = () => {
         if (item.action) {
           item.action();
         } else if (item.route) {
-          router.push(item.route as any);
+          navigateTo(item.route);
         }
       }}
       className={`flex-row items-center px-4 py-4 bg-white ${
@@ -204,53 +202,172 @@ const Profile = () => {
     </TouchableOpacity>
   );
 
+  const guestMenuItems: MenuItem[] = [
+    {
+      icon: "mail-outline",
+      iconType: "Ionicons",
+      title: "Contact Us",
+      subtitle: "Send us a message or feedback",
+      route: "/(tabs)/contact",
+      showChevron: true,
+    },
+    {
+      icon: "people-outline",
+      iconType: "Ionicons",
+      title: "Refer Seller",
+      subtitle: "Refer your trusted neighbourhood Seller",
+      route: "/profile/refer",
+      showChevron: true,
+    },
+    {
+      icon: "information-circle-outline",
+      iconType: "Ionicons",
+      title: "About Us",
+      subtitle: "Know more about BigLocal",
+      action: async () => {
+        const url = process.env.EXPO_PUBLIC_ABOUT_URL;
+        if (url) {
+          const supported = await Linking.canOpenURL(url);
+          if (supported) {
+            await Linking.openURL(url);
+          }
+        }
+      },
+      showChevron: true,
+    },
+    {
+      icon: "help-circle-outline",
+      iconType: "Ionicons",
+      title: "FAQ",
+      subtitle: "Frequently asked questions",
+      route: "/(tabs)/faq",
+      showChevron: true,
+    },
+    {
+      icon: "document-text-outline",
+      iconType: "Ionicons",
+      title: "Terms & Conditions",
+      subtitle: "Terms of service for using BigLocal",
+      route: "/terms",
+      showChevron: true,
+    },
+    {
+      icon: "shield-checkmark-outline",
+      iconType: "Ionicons",
+      title: "Privacy Policy",
+      subtitle: "Privacy Policy details",
+      route: "/privacy",
+      showChevron: true,
+    },
+    {
+      icon: "return-down-back",
+      iconType: "Ionicons",
+      title: "Return Policy",
+      subtitle: "Return Policy details",
+      route: "/return-policy",
+      showChevron: true,
+    },
+    {
+      icon: "cash-outline",
+      iconType: "Ionicons",
+      title: "Refund & Cancellation",
+      subtitle: "Refund/Cancellation Policy details",
+      route: "/refund-policy",
+      showChevron: true,
+    },
+    {
+      icon: "cube-outline",
+      iconType: "Ionicons",
+      title: "Shipping Policy",
+      subtitle: "Shipping Policy Details",
+      route: "/shipping",
+      showChevron: true,
+    },
+    {
+      icon: "document-outline",
+      iconType: "Ionicons",
+      title: "Legal Disclaimer",
+      subtitle: "Legal terms and disclaimers",
+      route: "/legal-disclaimer",
+      showChevron: true,
+    },
+    {
+      icon: "storefront-outline",
+      iconType: "Ionicons",
+      title: "Join us as a Seller",
+      subtitle: "Sell on BigLocal",
+      action: async () => {
+        const url = process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID;
+        if (url) {
+          const supported = await Linking.canOpenURL(url);
+          if (supported) {
+            await Linking.openURL(url);
+          }
+        }
+      },
+      showChevron: true,
+    },
+  ];
+
   if (isGuestMode) {
     return (
       <RefreshableScrollView
         className="flex-1 bg-gray-50"
         onRefresh={handleRefresh}
       >
+        {/* Guest Hero Section */}
         <View className="bg-white px-4 py-6 mb-2">
           <View className="items-center">
-            <View className="w-20 h-20 rounded-full bg-gray-200 items-center justify-center mb-3">
-              <FontAwesome5 name="user" size={40} color="#64748b" />
+            <View className="relative">
+              <View className="w-24 h-24 rounded-full bg-slate-300 items-center justify-center">
+                <FontAwesome5 name="user" size={48} color="#475569" />
+              </View>
             </View>
-            <Text className="text-xl font-bold text-gray-900">Guest User</Text>
-            <Text className="text-sm text-gray-500 mt-1">
+            <Text className="mt-4 text-2xl font-bold text-gray-900">
+              Guest User
+            </Text>
+            <Text className="mt-1 text-base text-gray-500">
               Browsing as guest
             </Text>
-            <TouchableOpacity
-              onPress={() => setShowAuthModal(true)}
-              className="mt-4 bg-orange-600 px-8 py-3 rounded-lg"
-            >
-              <Text className="text-white font-semibold text-base">
-                Sign In
-              </Text>
-            </TouchableOpacity>
           </View>
         </View>
 
-        <View className="mt-2">
-          <Text className="text-xs font-semibold text-gray-500 uppercase px-4 py-2">
+        {/* Sign In Action Card */}
+        <View className="mx-4 mt-2 bg-white p-4 rounded-xl border border-gray-200">
+          <View className="flex-row items-center mb-4">
+            <View className="p-2 rounded-lg bg-orange-50">
+              <Ionicons name="log-in-outline" size={24} color="#ea580c" />
+            </View>
+            <View className="flex-1 ml-3">
+              <Text className="text-base font-semibold text-gray-800">
+                Sign In to Your Account
+              </Text>
+              <Text className="text-sm text-gray-500">
+                Access orders, profile, and more
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={() => setShowAuthModal(true)}
+            className="bg-orange-600 py-3 rounded-lg items-center"
+          >
+            <Text className="text-white font-semibold text-base">Sign In</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Information & Support Section */}
+        <View className="mt-4">
+          <Text className="text-xs font-semibold text-gray-500 uppercase px-4 py-2 tracking-wider">
             Information & Support
           </Text>
-          <View className="bg-white">
-            {supportItems.map((item, index) =>
-              renderMenuItem(item, index === supportItems.length - 1)
+          <View className="mx-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {guestMenuItems.map((item, index) =>
+              renderMenuItem(item, index === guestMenuItems.length - 1)
             )}
           </View>
         </View>
 
-        <View className="mt-2 mb-4">
-          <Text className="text-xs font-semibold text-gray-500 uppercase px-4 py-2">
-            Legal
-          </Text>
-          <View className="bg-white">
-            {legalItems.map((item, index) =>
-              renderMenuItem(item, index === legalItems.length - 1)
-            )}
-          </View>
-        </View>
+        <View className="h-8" />
       </RefreshableScrollView>
     );
   }

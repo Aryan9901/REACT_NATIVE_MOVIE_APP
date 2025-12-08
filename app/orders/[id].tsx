@@ -284,11 +284,30 @@ const OrderTracking = ({ order }: any) => {
   );
 };
 
+// Helper function to extract address without name (address comes after \\n)
+const getFormattedAddressFromString = (address: string | undefined) => {
+  if (!address) return "";
+  // Check if address contains \\n (escaped newline from API)
+  if (address.includes("\\n")) {
+    const parts = address.split("\\n");
+    return parts.slice(1).join(", ").trim();
+  }
+  // Check for actual newline character
+  if (address.includes("\n")) {
+    const parts = address.split("\n");
+    return parts.slice(1).join(", ").trim();
+  }
+  return address;
+};
+
 // Map Modal Component
 const MapModal = ({ visible, onClose, order }: any) => {
+  const formattedAddress = getFormattedAddressFromString(
+    order?.deliveryAddress
+  );
+
   const openInMaps = () => {
-    const address = order?.deliveryAddress || "";
-    const encodedAddress = encodeURIComponent(address);
+    const encodedAddress = encodeURIComponent(formattedAddress);
 
     if (Platform.OS === "ios") {
       Linking.openURL(`maps://app?daddr=${encodedAddress}`);
@@ -314,7 +333,7 @@ const MapModal = ({ visible, onClose, order }: any) => {
             <View className="flex-row items-start gap-2 mb-3">
               <MaterialIcons name="location-on" size={20} color="#ea580c" />
               <Text className="text-base text-gray-700 flex-1">
-                {order?.deliveryAddress}
+                {formattedAddress}
               </Text>
             </View>
 
@@ -499,19 +518,169 @@ const RescheduleOrderModal = ({
   onClose,
   onConfirm,
   isLoading,
+  vendorConfig,
+  isService = false,
 }: any) => {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // Parse weekly off days
+  const weeklyOffDays = vendorConfig?.weeklyOffDay || "";
+  const offDays = weeklyOffDays
+    ? weeklyOffDays.split(";").map((day: string) => day.trim().toLowerCase())
+    : [];
 
-  // Generate next 7 days
+  // Check if a date is a weekly off day
+  const isWeeklyOffDay = (checkDate: Date) => {
+    if (offDays.length === 0) return false;
+    const dayName = checkDate
+      .toLocaleDateString("en-US", { weekday: "long" })
+      .toLowerCase();
+    return offDays.includes(dayName);
+  };
+
+  // Find next available date (skip weekly off days)
+  const getNextAvailableDate = (startDate: Date) => {
+    const nextDate = new Date(startDate);
+    let attempts = 0;
+    const maxAttempts = 14;
+
+    while (attempts < maxAttempts) {
+      if (!isWeeklyOffDay(nextDate)) {
+        return nextDate;
+      }
+      nextDate.setDate(nextDate.getDate() + 1);
+      attempts++;
+    }
+    return startDate;
+  };
+
+  const getTomorrow = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow;
+  };
+
+  const [selectedDate, setSelectedDate] = useState<Date>(() =>
+    getNextAvailableDate(getTomorrow())
+  );
+  const [selectedSlot, setSelectedSlot] = useState<string>("");
+  const [availableSlots, setAvailableSlots] = useState<
+    { value: string; label: string }[]
+  >([]);
+
+  const formatDisplayTime = (timeStr: string) => {
+    const [hour, minute] = timeStr.split(":");
+    const date = new Date();
+    date.setHours(parseInt(hour), parseInt(minute || "0"));
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const getCurrentHour = () => new Date().getHours();
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  // Generate 1-hour slots from shop timing
+  const generateHourlySlots = (shopTiming: any, date: Date) => {
+    if (!shopTiming?.start || !shopTiming?.end) {
+      return [];
+    }
+
+    const [startHour] = shopTiming.start.split(":").map(Number);
+    const [endHour] = shopTiming.end.split(":").map(Number);
+
+    const isTodayDate = isToday(date);
+    const currentHour = getCurrentHour();
+
+    const slots: { value: string; label: string }[] = [];
+
+    let effectiveStartHour = startHour;
+    if (isTodayDate && currentHour >= startHour) {
+      effectiveStartHour = currentHour + 1;
+    }
+
+    const effectiveEndHour = endHour < startHour ? endHour + 24 : endHour;
+
+    for (let hour = effectiveStartHour; hour < effectiveEndHour; hour++) {
+      const slotStartHour = hour % 24;
+      const slotEndHour = (hour + 1) % 24;
+
+      const slotValue = `${String(slotStartHour).padStart(2, "0")}:00-${String(
+        slotEndHour
+      ).padStart(2, "0")}:00`;
+      const slotLabel = `${formatDisplayTime(
+        `${slotStartHour}:00`
+      )} - ${formatDisplayTime(`${slotEndHour}:00`)}`;
+
+      slots.push({ value: slotValue, label: slotLabel });
+    }
+
+    return slots;
+  };
+
+  // Calculate available slots based on selected date and vendor config
+  useEffect(() => {
+    let formattedSlots: { value: string; label: string }[] = [];
+
+    if (isWeeklyOffDay(selectedDate)) {
+      setAvailableSlots([]);
+      setSelectedSlot("");
+      return;
+    }
+
+    if (isService && vendorConfig?.deliverySlots?.service) {
+      const deliverySlots = vendorConfig.deliverySlots.service || [];
+      const isTodayDate = isToday(selectedDate);
+
+      const slots = isTodayDate
+        ? deliverySlots.filter((slot: string) => {
+            const slotHour = parseInt(slot.split(":")[0], 10);
+            return slotHour > getCurrentHour();
+          })
+        : deliverySlots;
+
+      formattedSlots = slots.map((slot: string) => {
+        const [start, end] = slot.split("-");
+        return {
+          value: slot,
+          label: `${formatDisplayTime(start)} - ${formatDisplayTime(end)}`,
+        };
+      });
+    } else if (!isService && vendorConfig?.shopTiming) {
+      formattedSlots = generateHourlySlots(
+        vendorConfig.shopTiming,
+        selectedDate
+      );
+    }
+
+    setAvailableSlots(formattedSlots);
+
+    if (formattedSlots.length > 0) {
+      setSelectedSlot(formattedSlots[0].value);
+    } else {
+      setSelectedSlot("");
+    }
+  }, [selectedDate, vendorConfig, isService]);
+
+  // Generate next 7 available days
   const getNext7Days = () => {
-    const days = [];
+    const days: Date[] = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (let i = 1; i <= 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      days.push(date);
+    let currentDate = new Date(today);
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    while (days.length < 7) {
+      if (!isWeeklyOffDay(currentDate)) {
+        days.push(new Date(currentDate));
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
     }
     return days;
   };
@@ -519,10 +688,7 @@ const RescheduleOrderModal = ({
   const availableDates = getNext7Days();
 
   const formatDateDisplay = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    const tomorrow = getTomorrow();
 
     if (date.toDateString() === tomorrow.toDateString()) {
       return "Tomorrow";
@@ -540,91 +706,185 @@ const RescheduleOrderModal = ({
       Alert.alert("Error", "Please select a delivery date");
       return;
     }
-    onConfirm(selectedDate);
+    if (availableSlots.length > 0 && !selectedSlot) {
+      Alert.alert("Error", "Please select a time slot");
+      return;
+    }
+    onConfirm(selectedDate, selectedSlot);
   };
 
   const handleClose = () => {
-    setSelectedDate(null);
+    setSelectedDate(getNextAvailableDate(getTomorrow()));
+    setSelectedSlot("");
     onClose();
   };
 
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View className="flex-1 bg-black/50 items-center justify-end">
-        <View className="bg-white rounded-t-3xl p-6 w-full">
+        <View className="bg-white rounded-t-3xl p-6 w-full max-h-[90%]">
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold text-gray-900">
-              Reschedule Delivery
-            </Text>
+            <View>
+              <Text className="text-xl font-bold text-gray-900">
+                Reschedule Order
+              </Text>
+              <Text className="text-sm text-gray-500">
+                Choose a new {isService ? "pickup" : "delivery"} date
+              </Text>
+            </View>
             <TouchableOpacity onPress={handleClose} disabled={isLoading}>
               <AntDesign name="close" size={24} color="#6b7280" />
             </TouchableOpacity>
           </View>
 
-          <Text className="text-sm text-gray-600 mb-4">
-            Select a new delivery date (within next 7 days):
-          </Text>
+          <ScrollView
+            className="max-h-[70%]"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Date Selection */}
+            <Text className="text-sm font-medium text-gray-900 mb-2">
+              {isService
+                ? "Select New Pickup Date"
+                : "Select New Delivery Date"}
+            </Text>
 
-          <ScrollView className="max-h-96 mb-4">
-            {availableDates.map((date) => {
-              const isSelected =
-                selectedDate?.toDateString() === date.toDateString();
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mb-4"
+            >
+              {availableDates.map((date) => {
+                const isSelected =
+                  selectedDate?.toDateString() === date.toDateString();
 
-              return (
-                <TouchableOpacity
-                  key={date.toISOString()}
-                  onPress={() => setSelectedDate(date)}
-                  className={`flex-row items-center justify-between p-4 mb-2 rounded-lg border ${
-                    isSelected
-                      ? "bg-orange-50 border-orange-500"
-                      : "bg-white border-gray-200"
-                  }`}
-                  activeOpacity={0.7}
-                >
-                  <View className="flex-row items-center flex-1">
-                    <View
-                      className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-3 ${
-                        isSelected ? "border-orange-500" : "border-gray-300"
+                return (
+                  <TouchableOpacity
+                    key={date.toISOString()}
+                    onPress={() => setSelectedDate(date)}
+                    className={`mr-2 px-4 py-3 rounded-lg border ${
+                      isSelected
+                        ? "bg-orange-600 border-orange-600"
+                        : "bg-white border-gray-200"
+                    }`}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      className={`text-sm font-medium text-center ${
+                        isSelected ? "text-white" : "text-gray-900"
                       }`}
                     >
-                      {isSelected && (
-                        <View className="w-3 h-3 rounded-full bg-orange-500" />
-                      )}
-                    </View>
-                    <View>
-                      <Text
-                        className={`text-base font-medium ${
-                          isSelected ? "text-orange-600" : "text-gray-900"
+                      {formatDateDisplay(date)}
+                    </Text>
+                    <Text
+                      className={`text-xs text-center mt-1 ${
+                        isSelected ? "text-orange-100" : "text-gray-500"
+                      }`}
+                    >
+                      {date.toLocaleDateString("en-US", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Selected Date Display */}
+            <View className="bg-gray-50 rounded-lg p-3 mb-4">
+              <Text className="text-xs text-gray-600 text-center">
+                Selected Date
+              </Text>
+              <Text className="text-sm font-medium text-gray-900 text-center">
+                {selectedDate?.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </Text>
+            </View>
+
+            {/* Time Slot Selection */}
+            {availableSlots.length > 0 && (
+              <View className="mb-4">
+                <Text className="text-sm font-medium text-gray-900 mb-2">
+                  {isService
+                    ? "Select Pickup Time Slot"
+                    : "Select Delivery Time Slot"}
+                </Text>
+                <View className="flex-row flex-wrap">
+                  {availableSlots.map((slot) => {
+                    const isSelected = selectedSlot === slot.value;
+                    return (
+                      <TouchableOpacity
+                        key={slot.value}
+                        onPress={() => setSelectedSlot(slot.value)}
+                        className={`mr-2 mb-2 px-3 py-2 rounded-lg border ${
+                          isSelected
+                            ? "bg-orange-600 border-orange-600"
+                            : "bg-white border-gray-200"
                         }`}
+                        activeOpacity={0.7}
                       >
-                        {formatDateDisplay(date)}
-                      </Text>
-                      <Text className="text-xs text-gray-500 mt-0.5">
-                        {date.toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </Text>
-                    </View>
-                  </View>
-                  <MaterialCommunityIcons
-                    name="calendar-clock"
-                    size={20}
-                    color={isSelected ? "#ea580c" : "#9ca3af"}
-                  />
-                </TouchableOpacity>
-              );
-            })}
+                        <Text
+                          className={`text-xs font-medium ${
+                            isSelected ? "text-white" : "text-gray-700"
+                          }`}
+                        >
+                          {slot.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* No slots available message */}
+            {availableSlots.length === 0 && (
+              <View
+                className={`rounded-lg p-3 mb-4 ${
+                  isWeeklyOffDay(selectedDate)
+                    ? "bg-red-50 border border-red-200"
+                    : "bg-yellow-50 border border-yellow-200"
+                }`}
+              >
+                <Text
+                  className={`text-sm text-center ${
+                    isWeeklyOffDay(selectedDate)
+                      ? "text-red-800"
+                      : "text-yellow-800"
+                  }`}
+                >
+                  {isWeeklyOffDay(selectedDate)
+                    ? `${selectedDate.toLocaleDateString("en-US", {
+                        weekday: "long",
+                      })} is a weekly off day. Please choose another date.`
+                    : isService
+                    ? "No pickup slots available for the selected date."
+                    : "No delivery slots available for the selected date."}
+                </Text>
+              </View>
+            )}
           </ScrollView>
 
           <TouchableOpacity
             onPress={handleConfirm}
             className="bg-orange-600 py-4 rounded-lg items-center mb-3"
-            disabled={isLoading || !selectedDate}
+            disabled={
+              isLoading ||
+              !selectedDate ||
+              (availableSlots.length > 0 && !selectedSlot)
+            }
             activeOpacity={0.7}
             style={{
-              opacity: isLoading || !selectedDate ? 0.5 : 1,
+              opacity:
+                isLoading ||
+                !selectedDate ||
+                (availableSlots.length > 0 && !selectedSlot)
+                  ? 0.5
+                  : 1,
             }}
           >
             {isLoading ? (
@@ -642,7 +902,7 @@ const RescheduleOrderModal = ({
             disabled={isLoading}
             activeOpacity={0.7}
           >
-            <Text className="text-gray-700 font-semibold">Go Back</Text>
+            <Text className="text-gray-700 font-semibold">Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -701,16 +961,23 @@ export default function OrderDetailsPage() {
     }
   };
 
-  const handleRescheduleOrder = async (newDeliveryDate: Date) => {
+  const handleRescheduleOrder = async (
+    newDeliveryDate: Date,
+    selectedSlot?: string
+  ) => {
     try {
       setIsUpdatingOrder(true);
+      const isServiceOrder = getAttributeValue("Is Service") === "true";
       const success = await OrderService.rescheduleOrder(
         id as string,
         newDeliveryDate,
-        order?.attributeModels
+        order?.attributeModels,
+        selectedSlot,
+        isServiceOrder
       );
       setIsRescheduleModalOpen(false);
       if (success) {
+        Alert.alert("Success", "Order rescheduled successfully");
         fetchOrderDetails();
       } else {
         Alert.alert("Error", "Failed to reschedule order. Please try again.");
@@ -792,6 +1059,23 @@ export default function OrderDetailsPage() {
 
   const isDineIn = getAttributeValue(ORDER_ATTRIBUTE_KEYS.TABLE_NUMBER);
 
+  // Helper function to extract address without name (address comes after \\n)
+  const getFormattedAddress = (address: string | undefined) => {
+    if (!address) return "";
+    // Check if address contains \\n (escaped newline from API)
+    if (address.includes("\\n")) {
+      const parts = address.split("\\n");
+      // Return everything after the first part (name)
+      return parts.slice(1).join(", ").trim();
+    }
+    // Check for actual newline character
+    if (address.includes("\n")) {
+      const parts = address.split("\n");
+      return parts.slice(1).join(", ").trim();
+    }
+    return address;
+  };
+
   return (
     <View className="flex-1 bg-gray-50">
       <Header />
@@ -825,12 +1109,6 @@ export default function OrderDetailsPage() {
                     </Text>
                   </View>
                 )}
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-                  <Text className="text-sm text-gray-600">
-                    {orderDate ? new Date(orderDate).toDateString() : "N/A"}
-                  </Text>
-                </View>
               </View>
               {order.vendorShopName && (
                 <View className="bg-orange-50 px-3 py-1.5 rounded-full self-start mb-2">
@@ -876,7 +1154,7 @@ export default function OrderDetailsPage() {
                 >
                   <MaterialIcons name="location-on" size={16} color="#ea580c" />
                   <Text className="text-sm text-gray-700 flex-1">
-                    {order.deliveryAddress}
+                    {getFormattedAddress(order.deliveryAddress)}
                   </Text>
                   <MaterialIcons name="directions" size={16} color="#ea580c" />
                 </TouchableOpacity>
@@ -1007,7 +1285,7 @@ export default function OrderDetailsPage() {
                   </Text>
                   <FontAwesome5 name="rupee-sign" size={14} color="#4b5563" />
                   <Text className="text-base font-medium text-gray-900">
-                    {subtotal.toFixed(2)}
+                    {subtotal}
                   </Text>
                 </View>
               </View>
@@ -1169,6 +1447,31 @@ export default function OrderDetailsPage() {
         onClose={() => setIsRescheduleModalOpen(false)}
         onConfirm={handleRescheduleOrder}
         isLoading={isUpdatingOrder}
+        vendorConfig={{
+          deliverySlots: (() => {
+            const deliverySlotsAttr = order?.attributeModels?.find(
+              (attr: any) => attr.name === ORDER_ATTRIBUTE_KEYS.DELIVERY_SLOTS
+            );
+            return deliverySlotsAttr?.value
+              ? JSON.parse(deliverySlotsAttr.value)
+              : {};
+          })(),
+          shopTiming: (() => {
+            const shopTimingAttr = order?.attributeModels?.find(
+              (attr: any) => attr.name === ORDER_ATTRIBUTE_KEYS.SHOP_TIMING
+            );
+            return shopTimingAttr?.value
+              ? JSON.parse(shopTimingAttr.value)
+              : { start: "08:00", end: "20:00" };
+          })(),
+          weeklyOffDay: (() => {
+            const weeklyOffAttr = order?.attributeModels?.find(
+              (attr: any) => attr.name === ORDER_ATTRIBUTE_KEYS.WEEKLY_OFF_DAY
+            );
+            return weeklyOffAttr?.value || "";
+          })(),
+        }}
+        isService={getAttributeValue("Is Service") === "true"}
       />
 
       <MapModal

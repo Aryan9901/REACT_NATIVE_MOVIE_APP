@@ -111,7 +111,9 @@ export const cancelOrder = async (
 export const rescheduleOrder = async (
   orderId: string,
   newDeliveryDate: Date,
-  attributeModels?: Array<{ name: string; value: string }>
+  attributeModels?: Array<{ name: string; value: string }>,
+  selectedSlot?: string,
+  isService?: boolean
 ): Promise<boolean> => {
   const sessionToken = await AsyncStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
 
@@ -120,17 +122,66 @@ export const rescheduleOrder = async (
   }
 
   try {
-    // Set delivery time to end of shop timing (default 20:00)
-    const deliveryTime = new Date(newDeliveryDate);
-    deliveryTime.setHours(20, 0, 0, 0);
-
-    const deliveryDateTime = `by ${deliveryTime.toLocaleTimeString()} on ${deliveryTime.toDateString()}`;
+    const formatTime = (date: Date) => {
+      return date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    };
 
     // Update the attributes
     const apiAttributes =
       attributeModels?.map((attr: any) => {
+        // For service orders, update SERVICE_PICKUP_TIME
+        if (isService) {
+          if (attr.name === "Service Pickup Time" && selectedSlot) {
+            const [start, end] = selectedSlot.split("-");
+            const [startHour, startMinute] = start.split(":").map(Number);
+            const [endHour, endMinute] = end.split(":").map(Number);
+
+            const startTime = new Date(newDeliveryDate);
+            startTime.setHours(startHour, startMinute, 0, 0);
+
+            const endTime = new Date(newDeliveryDate);
+            endTime.setHours(endHour, endMinute, 0, 0);
+
+            const pickupDateTime = `${formatTime(startTime)} - ${formatTime(
+              endTime
+            )} on ${newDeliveryDate.toDateString()}`;
+            return { ...attr, value: pickupDateTime };
+          } else if (attr.name === "Rescheduled On") {
+            return { ...attr, value: new Date().toISOString() };
+          }
+          return attr;
+        }
+
+        // For regular orders, update DELIVERY_TIME
         if (attr.name === "Delivery Time") {
-          return { ...attr, value: deliveryDateTime };
+          if (selectedSlot) {
+            const [start, end] = selectedSlot.split("-");
+            const [startHour, startMinute] = start.split(":").map(Number);
+            const [endHour, endMinute] = end.split(":").map(Number);
+
+            const startTime = new Date(newDeliveryDate);
+            startTime.setHours(startHour, startMinute, 0, 0);
+
+            const endTime = new Date(newDeliveryDate);
+            endTime.setHours(endHour, endMinute, 0, 0);
+
+            const deliveryDateTime = `${formatTime(startTime)} - ${formatTime(
+              endTime
+            )} on ${newDeliveryDate.toDateString()}`;
+            return { ...attr, value: deliveryDateTime };
+          } else {
+            // Fallback to default time
+            const deliveryTime = new Date(newDeliveryDate);
+            deliveryTime.setHours(20, 0, 0, 0);
+            const deliveryDateTime = `by ${formatTime(
+              deliveryTime
+            )} on ${deliveryTime.toDateString()}`;
+            return { ...attr, value: deliveryDateTime };
+          }
         } else if (attr.name === "Rescheduled On") {
           return { ...attr, value: new Date().toISOString() };
         }

@@ -181,7 +181,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         STORAGE_KEYS.SESSION_TOKEN,
         STORAGE_KEYS.REFRESH_TOKEN,
       ]);
-      set({ user: null, isAuthenticated: false });
+      await AsyncStorage.setItem(STORAGE_KEYS.GUEST_MODE, "true");
+      set({ user: null, isAuthenticated: false, isGuestMode: true });
     } catch (error) {
       console.error("Failed to logout:", error);
     }
