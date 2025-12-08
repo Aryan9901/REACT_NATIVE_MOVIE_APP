@@ -46,6 +46,7 @@ const extractGoogleAddressComponents = (components: any[]): any => {
 };
 
 interface AddressFormData {
+  name: string;
   addressLineOne: string;
   addressLineTwo: string;
   city: string;
@@ -70,6 +71,7 @@ const EditAddress = () => {
   const { user, refreshUser } = useAuthStore();
 
   const [formData, setFormData] = useState<AddressFormData>({
+    name: "",
     addressLineOne: "",
     addressLineTwo: "",
     city: "",
@@ -95,12 +97,15 @@ const EditAddress = () => {
   // Load address data if editing
   useEffect(() => {
     if (isEditing && user?.addressModel) {
-      const address = user.addressModel.find((addr) => addr.id === addressId);
+      const address: any = user.addressModel.find(
+        (addr) => addr.id === addressId
+      );
       if (address) {
         const addressType = address.type || "Home";
         const isCustomType = !addressTypes.includes(addressType);
 
         setFormData({
+          name: address.name || "",
           addressLineOne: address.addressLineOne || "",
           addressLineTwo: address.addressLineTwo || "",
           city: address.city || "",
@@ -268,6 +273,9 @@ const EditAddress = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    }
     if (!formData.addressLineOne.trim()) {
       newErrors.addressLineOne = "Flat / House No. is required";
     }
@@ -306,6 +314,7 @@ const EditAddress = () => {
         formData.type === "Other" ? customType.trim() : formData.type;
 
       let addressData: any = {
+        name: formData.name,
         addressLineOne: formData.addressLineOne,
         addressLineTwo: formData.addressLineTwo,
         city: formData.city,
@@ -321,6 +330,7 @@ const EditAddress = () => {
       if (isEditing && addressId) {
         addressData = {
           id: addressId,
+          name: formData.name,
           addressLineOne: formData.addressLineOne,
           addressLineTwo: formData.addressLineTwo,
           city: formData.city,
@@ -334,6 +344,7 @@ const EditAddress = () => {
         };
       } else {
         addressData = {
+          name: formData.name,
           addressLineOne: formData.addressLineOne,
           addressLineTwo: formData.addressLineTwo,
           city: formData.city,
@@ -569,6 +580,31 @@ const EditAddress = () => {
               <Text className="text-sm font-bold text-gray-700 ml-2">
                 Complete Address
               </Text>
+            </View>
+
+            <View className="mb-1.5">
+              <Text className="text-sm font-semibold text-gray-700 mb-2">
+                Full Name *
+              </Text>
+              <TextInput
+                value={formData.name}
+                onChangeText={(value) => updateField("name", value)}
+                placeholder="e.g., John Doe"
+                className={`border-2 rounded-md px-4 py-2 text-base text-gray-900 ${
+                  errors.name
+                    ? "border-red-500 bg-red-50"
+                    : "border-gray-200 bg-gray-50"
+                }`}
+                placeholderTextColor="#9ca3af"
+              />
+              {errors.name && (
+                <View className="flex-row items-center mt-1.5">
+                  <Ionicons name="alert-circle" size={14} color="#ef4444" />
+                  <Text className="text-red-500 text-xs ml-1">
+                    {errors.name}
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View className="mb-1.5">

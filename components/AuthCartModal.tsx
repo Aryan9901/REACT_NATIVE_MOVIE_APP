@@ -889,6 +889,7 @@ function CreateAddressStepComponent({
   const { refreshUser } = useAuthStore();
 
   const [formData, setFormData] = useState({
+    name: "",
     addressLineOne: "",
     addressLineTwo: "",
     city: "",
@@ -1054,6 +1055,9 @@ function CreateAddressStepComponent({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    }
     if (!formData.addressLineOne.trim()) {
       newErrors.addressLineOne = "Flat / House No. is required";
     }
@@ -1093,6 +1097,7 @@ function CreateAddressStepComponent({
       setIsCreating(true);
 
       const addressData = {
+        name: formData.name,
         addressLineOne: formData.addressLineOne,
         addressLineTwo: formData.addressLineTwo,
         city: formData.city,
@@ -1268,6 +1273,26 @@ function CreateAddressStepComponent({
         </View>
 
         {/* Address Form Fields */}
+        <View className="mb-2">
+          <Text className="text-sm font-semibold text-gray-700 mb-1">
+            Full Name *
+          </Text>
+          <TextInput
+            value={formData.name}
+            onChangeText={(value) => updateField("name", value)}
+            placeholder="e.g., John Doe"
+            className={`border rounded-xl px-3 py-2 text-base text-gray-900 ${
+              errors.name
+                ? "border-red-500 bg-red-50"
+                : "border-gray-300 bg-gray-50"
+            }`}
+            placeholderTextColor="#9ca3af"
+          />
+          {errors.name && (
+            <Text className="text-red-500 text-xs mt-1">{errors.name}</Text>
+          )}
+        </View>
+
         <View className="mb-2">
           <Text className="text-sm font-semibold text-gray-700 mb-1">
             Flat / House No. / Building *
